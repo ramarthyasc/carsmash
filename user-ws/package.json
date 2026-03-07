@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon --exec tsx src/app.ts",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/http-server": "^0.12.4",
     "@types/jest": "^30.0.0",
     "@types/pg": "^8.16.0",
     "@types/ws": "^8.18.1",

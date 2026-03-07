@@ -6,6 +6,9 @@ const tsJestTransformCfg = createDefaultPreset().transform;
 export default {
   testEnvironment: "node",
  extensionsToTreatAsEsm: [".ts"],
+     moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+  },
   transform: {
     ...tsJestTransformCfg,
   },

@@ -11,9 +11,9 @@ const servers: WebSocket[] = [];
 wss.on("connection", (ws) => {
     servers.push(ws);
 
-    ws.on("message", (message: string) => {
+    ws.on("message", (data) => {
         servers.forEach((server) => {
-            server.send(message);
+            server.send(data.toString());
         })
     })
 
@@ -23,6 +23,4 @@ wss.on("connection", (ws) => {
 
 })
 
-server.listen(5001, () => {
-    console.log("Relayer open @Port: ", 5001);
-})
+export default server;
