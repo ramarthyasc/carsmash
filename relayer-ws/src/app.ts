@@ -16,7 +16,7 @@ interface IMessage {
     room: string;
     message: string;
 }
-export type ClientMessage = 
+export type ClientMessage =
     | IRoomCreate
     | IDeleteRoom
     | IMessage
@@ -31,7 +31,7 @@ interface Room {
 }
 const rooms: Record<string, Room> = {
 }
-const serverRooms = new Map<WebSocket,Set<keyof typeof rooms>>()
+const serverRooms = new Map<WebSocket, Set<keyof typeof rooms>>()
 
 wss.on("connection", (ws) => {
     console.log("Relayer server connected");
@@ -52,26 +52,31 @@ wss.on("connection", (ws) => {
             // (WE could use .includes in array to check if duplicates exist, but we chose 
             // Set as we dont need to check it in SET)
             /// BUT WE STOP THIS SAME ROOM + SERVER SERVER Behavior from the server itself.ie; When there is a room
-                //existing inside the server, then it won't send the join-room message here
+            //existing inside the server, then it won't send the join-room message here
 
             //same socket can be inside different rooms unlike in a non relay ws server
             if (!serverRooms.get(ws)) {
                 serverRooms.set(ws, new Set());
             }
             serverRooms.get(ws)?.add(room);
+            console.log("hey", rooms);
             return;
         }
 
         if (parsedData.type === "chat") {
             //publish at chat
             rooms[room]?.servers.forEach((server) => {
+                console.log("sending chat to rooms", rooms);
+                console.log(parsedData.message);
                 server.send(JSON.stringify(parsedData));
             })
         }
 
         if (parsedData.type === "delete-room") {
+            console.log(" WS SERVER ROOM DELETED: SERVER IS DELETED FROM THAT RESPECTIVE ROOM")
             // delete the server from the room
             rooms[room]?.servers.delete(ws);
+            console.log("deleterooms", rooms);
         }
     })
 
@@ -81,6 +86,7 @@ wss.on("connection", (ws) => {
 
     // if the ws server abruptly terminated or when ws server close gracefully - tcp connection closes: 
     ws.on("close", (code, reason) => {
+        console.log("ABRUPT CLOSING -DELETING ALL INSTANCES OF THE SERVER IN RESPECTIVE ROOMS")
         console.log("WS server closed with code: %d, reason: %s", code, reason.toString());
         serverRooms.get(ws)?.forEach((room) => {
             rooms[room]?.servers.delete(ws);

@@ -57,7 +57,7 @@ export default function createServer(port: number, relayHost: string) {
             const room = parsedData.room;
 
             if (parsedData.type === "join-room") {
-                console.log("JOINING ROOM");
+                console.log("JOINING ROOM", room);
                 if (rooms[room] === undefined) {
                     rooms[room] = {
                         sockets: [],
@@ -65,7 +65,7 @@ export default function createServer(port: number, relayHost: string) {
                     // only when the room is created, only then send the join-room message to Relayer from
                     // this server. Because after that, even if there are clients joining the same room, then
                     // I don't need to tell relayer that this room is in this server again and again.
-                    console.log("Sending wsRelay data");
+                    console.log("Created Room");
                     wsRelay.send(JSON.stringify(parsedData));
                 }
                 rooms[room].sockets.push(ws);
@@ -89,6 +89,7 @@ export default function createServer(port: number, relayHost: string) {
 
             if (!rooms[room].sockets.length) {
                 rooms[room] = undefined;
+                console.log("Rooms room1 is undefined right now");
                 // send message to relay server that room A is no longer in this server
                 const deleteRoom: IDeleteRoom = {
                     type: "delete-room",
