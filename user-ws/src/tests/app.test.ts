@@ -116,6 +116,13 @@ describe("Chat application", () => {
         })
 
     })
+
+    // test("Relay server shouldn't relay message to a websocket server not having a chat specific room", () => {
+    //     //Abruptly terminated ws server 
+    //
+    //     //All clients disconnected from a room in a server
+    //
+    // })
 })
 
 
@@ -154,3 +161,8 @@ afterAll(async () => {
 
 
 
+// Scenario : 
+//
+// What if the client closes the browser abruptly - which closes the tcp connection and the server automatically
+// recognizes that the specific tcp connection is no longer there, so it closes that ws from it's side. So, as
+// I have that WS object in an array, i have to delete it - using onclose eventhandler;
