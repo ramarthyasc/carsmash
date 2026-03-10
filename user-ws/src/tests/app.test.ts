@@ -157,6 +157,10 @@ describe("Chat application", () => {
         })
 
     })
+
+    // WHEN i delete RoomA in websocket server, then it sends delete-room message to Relayer. After i 
+    // delete the room in the Websocket server, just after that, if i receive chat message to room A, then
+    // there shouldn't be causing errors. Instead it should do nothing. - WHICH IT DOES RIGHT NOW>
 })
 
 
