@@ -46,7 +46,7 @@ const BACKEND_URL2 = `ws://localhost:${PORT2}`;
 
 
 describe("Chat application", () => {
-    test('Message from Room 1 reaches another participant in Room 1', async () => {
+    test('Message from Room A in Server 1 reaches another participant in Room A in Server 2', async () => {
         // CREATING WS CONNECTIONS
         ws1 = new WebSocket(BACKEND_URL1);
         ws2 = new WebSocket(BACKEND_URL2);
@@ -67,22 +67,25 @@ describe("Chat application", () => {
         // JOINING ROOMS
 
         //// register the message handlers
-        const p1join = onmessagePromiseGen(ws1, { type: "join-room", room: "Room 1" });
-        const p2join = onmessagePromiseGen(ws2, { type: "join-room", room: "Room 1" });
+        const p1join = onmessagePromiseGen(ws1, { type: "join-room", room: "Room 1" }, 2);
+        const p2join = onmessagePromiseGen(ws2, { type: "join-room", room: "Room 1" }, 2);
 
         ws1.send(JSON.stringify({ type: "join-room", room: "Room 1" }));
         ws2.send(JSON.stringify({ type: "join-room", room: "Room 1" }));
 
+
+        console.log("YOOOOOOOOOOOOOOOOOOOOOOOOOOOOoo")
         await Promise.all([p1join, p2join]);
         //
 
         // SENDING MESSAGE (Register the async op as a promise, then only after all the sync operation that you need to
         // do, you can await that promise)
-        const p1msg = onmessagePromiseGen(ws1, { type: "chat", room: "Room 1", message: "hello ws2" });
-        const p2msg = onmessagePromiseGen(ws2, { type: "chat", room: "Room 1", message: "hello ws2" });
+        const p1msg = onmessagePromiseGen(ws1, { type: "chat", room: "Room 1", message: "hello ws2" }, 1);
+        const p2msg = onmessagePromiseGen(ws2, { type: "chat", room: "Room 1", message: "hello ws2" }, 1);
 
         ws1.send(JSON.stringify({ type: "chat", room: "Room 1", message: "hello ws2" }));
 
+        console.log("LLLLOOOOOOOOOOOOOOOOOOOOOOOOOOOOoo")
         await Promise.all([p1msg, p2msg]);
 
 
@@ -105,11 +108,12 @@ describe("Chat application", () => {
         await delay(200);
 
         //send message from ws1 client(which is in Room1)
-        const p1msg = onmessagePromiseGen(ws1, { type: "chat", room: "Room 1", message: "hello ws2, are you there ??" });
+        const p1msg = onmessagePromiseGen(ws1, { type: "chat", room: "Room 1", message: "hello ws2, are you there ??" }, 1);
         /////// wsRelay2.addEventListener("message", handler);
         client2Sub.on("message", handler);
         ws1.send(JSON.stringify({ type: "chat", room: "Room 1", message: "hello ws2, are you there ??" }));
         //// msg should be recieved by ws1
+        console.log("HEYYYYYYYYYYYYYOOOOOOOOOOOOOOOOOOOOOOo")
         await p1msg;
         //// msg should not reach Server 2
         await delay(200);
@@ -125,8 +129,21 @@ describe("Chat application", () => {
             ws2.onopen = () => (res());
         })
         const pmsg = new Promise<void>((res, _) => {
-            ws2.onmessage = () => (res())
+            let count = 0;
+            ws2.onmessage = () => {
+                count++;
+                if (count === 2) {
+                    res();
+                }
+            }
+            ws1.onmessage = () => {
+                count++;
+                if (count === 2) {
+                    res();
+                }
+            }
         })
+        console.log("HELOOOOOOOO")
         ws2.send(JSON.stringify({ type: "join-room", room: "Room 1" }));
         await pmsg;
 
@@ -155,12 +172,12 @@ afterAll(async () => {
         setTimeout(() => res(), 500);
     })
 
+    // // Closing the Redis clients for each server
+    await client1.close();
+    await client1Sub.close();
+    await client2.close();
+    await client2Sub.close();
 
-    // Closing the Relayer websockets
-    client1.close();
-    client1Sub.close();
-    client2.close();
-    client2Sub.close();
 
     //Closing the Websocket server which is still listening 
     // await Promise.all([wsServerCloser(wss1), wsServerCloser(wss2)]) 
@@ -187,22 +204,31 @@ function delay(ms: number) {
         setTimeout(res, ms);
     })
 }
-function onmessagePromiseGen(ws: WebSocket, expectedmsg: IRoomCreate | IMessage) {
+function onmessagePromiseGen(ws: WebSocket, expectedmsg: IRoomCreate | IMessage, maxcount: number) {
+
+    // count given so that, the ws client recieves all the messages before moving forward with the tests
     return new Promise<void>((res, rej) => {
+        let count = 0;
 
         ws.onmessage = ({ data }: MessageEvent) => {
             const parsedData = JSON.parse(data);
+            console.log(parsedData, "OYOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
             expect(parsedData.type).toBe(expectedmsg.type);
             expect(parsedData.room).toBe(expectedmsg.room);
             if ("message" in expectedmsg) {
                 expect(parsedData.message).toBe(expectedmsg.message);
             }
-            res();
+            count++;
+            console.log("maxcount, count", maxcount, count);
+            if (count === maxcount) {
+                res();
+            }
         }
         ws.onerror = (event) => {
             rej(event);
         }
     })
+
 }
 async function servercloser(serverinstance: Server, port: typeof PORT1 | typeof PORT2) {
     return new Promise<void>((res, _) => {

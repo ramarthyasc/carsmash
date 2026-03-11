@@ -1,12 +1,11 @@
 import Image from "next/image";
+import GameEngine from "./_components/gameEngine";
 
 export default function Home() {
-  return (
-    <div className="flex-2">
-      <canvas className="bg-gray-500 h-full w-full">
 
-
-      </canvas>
-    </div>
-  );
+    return (
+        <div className="flex-2">
+            <GameEngine />
+        </div>
+    );
 }

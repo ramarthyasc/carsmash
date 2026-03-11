@@ -1,6 +1,7 @@
 services:
   pubsub:
     image: redis:trixie
+    restart: "unless-stopped"
     ports:
       - "6379:6379"
     volumes:
@@ -8,6 +9,7 @@ services:
 
   insight:
     image: redis/redisinsight
+    restart: "unless-stopped"
     ports:
       - "5540:5540"
     volumes:
