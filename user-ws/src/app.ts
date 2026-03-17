@@ -2,7 +2,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 import http, { Server } from 'http';
 import express from 'express';
 import { createClient } from "redis";
-import { chatRoomOnMessage, chatRoomOnClose, type ClientMessage } from './controllers/chatRoom.controller.js';
+import { chatRoomOnMessage, chatRoomOnClose } from './controllers/chatRoom.controller.js';
 
 
 export type ClientType = ReturnType<typeof createClient>;
@@ -11,21 +11,21 @@ export interface Room {
     sockets: WebSocket[];
 }
 
-interface IPosition {
-    x: number;
-    y: number;
-}
-interface IVelocity {
-    vx: number;
-    vy: number;
-}
-
-interface IPlayer {
-    room: string;
-    playerid: number;
-    position: IPosition;
-    velocity: IVelocity;
-}
+// interface IPosition {
+//     x: number;
+//     y: number;
+// }
+// interface IVelocity {
+//     vx: number;
+//     vy: number;
+// }
+//
+// interface IPlayer {
+//     room: string;
+//     playerid: number;
+//     position: IPosition;
+//     velocity: IVelocity;
+// }
 
 interface IPlayerBin {
     room: string;
@@ -55,8 +55,16 @@ export default async function createServer(port: number) {
     }
     // a map because, players can be removed and added when client socket disconnects or connects 
     // (ws is attached -> the Room & Playerid)
-    const players = new Map<IPlayer["playerid"], IPlayer>();
+    const players = new Map<IPlayerBin["playerid"], IPlayerBin>();
 
+    const player: IPlayerBin = {
+        room: "",
+        playerid: 0,
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+    };
     function subscriptionHandler(message: Buffer, channel: Buffer) {
         console.log("SubscriptionHandler message is this", message.constructor.name);
         // decode the first 2 bytes. If it's a Number less than 10 (Room string's length) ,
@@ -97,24 +105,18 @@ export default async function createServer(port: number) {
         ws.on('message', async function message(data, isBinary) {
             if (isBinary && data instanceof ArrayBuffer) {
                 // Game engine 
-                const player = binaryDecoder(data); // decode with config set as little endian as bytes are 
+                binaryDecoder(data); // decode with config set as little endian as bytes are 
                 // written into the arrayBuffer using the config of little endianness
                 if ((ws as any).playerid === undefined) {
                     (ws as any).playerid = player.playerid;
                 }
                 // set Server data for the player
-                players.set(player.playerid, {
-                    room: player.room,
-                    playerid: player.playerid,
-                    position: {
-                        x: player.x,
-                        y: player.y
-                    },
-                    velocity: {
-                        vx: player.vx,
-                        vy: player.vy
-                    }
-                });
+                if (!players.has(player.playerid)) {
+                    // if there is no map set with the global player, then set the Map. otherwise
+                    // the Map's value will be updated automatically
+                    players.set(player.playerid, player);
+
+                }
 
                 console.log("here is the data that is published from Gameengine", data);
                 console.log(Buffer.from(data));
@@ -164,23 +166,12 @@ export default async function createServer(port: number) {
         console.log("stringlength", strlength);
         const typedArray = new Uint8Array(data, 2, strlength); //strlength would be 6 chars ie; 6 bytes: Room 1, Room 2 ,etc..
         const decoder = new TextDecoder();
-        const player: IPlayerBin = {
-            room: "",
-            playerid: 0,
-            x: 0,
-            y: 0,
-            vx: 0,
-            vy: 0,
-        };
         player.room = decoder.decode(typedArray);
-        player.playerid = view.getUint16(strlength + 2, true)
-        player.x = view.getInt16(strlength + 4, true);
-        player.y = view.getInt16(strlength + 6, true);
-        player.vx = view.getInt16(strlength + 8, true);
-        player.vy = view.getInt16(strlength + 10, true);
-
-        console.log(player);
-        return player;
+        player.playerid = view.getUint32(strlength + 2, true)
+        player.x = view.getFloat32(strlength + 6, true);
+        player.y = view.getFloat32(strlength + 10, true);
+        player.vx = view.getFloat32(strlength + 14, true);
+        player.vy = view.getFloat32(strlength + 18, true);
     }
 
 }
