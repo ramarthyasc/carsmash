@@ -1,4 +1,4 @@
-import { IPlayerBin } from "./update";
+import { IPlayerBin } from "../gameEngine";
 
 export default function render(player: IPlayerBin, ctx: CanvasRenderingContext2D) {
 

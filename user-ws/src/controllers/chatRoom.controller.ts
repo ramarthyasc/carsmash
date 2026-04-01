@@ -23,7 +23,7 @@ export type ClientMessage =
     | IMessage
 
 
-export async function chatRoomOnMessage(rooms: Record<string, Room | undefined>, data: WebSocket.RawData,
+export async function chatRoomOnMessage(rooms: Record<string, Room | undefined>, data: WebSocket.Data,
     ws: WebSocket, subscriptionHandler: (message: Buffer, channel: Buffer) => void,
     { client, clientSub }: RedisClients) {
         console.log("HEYYY", data.toString());

@@ -27,15 +27,16 @@ export interface Room {
 //     velocity: IVelocity;
 // }
 
-interface IPlayerBin {
+type Binary = 0 | 1;
+
+interface IPlayerClient {
     room: string;
     playerid: number;
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
+    left: Binary;
+    right: Binary;
+    up: Binary;
+    down: Binary;
 }
-
 
 export default async function createServer(port: number) {
 
@@ -55,25 +56,23 @@ export default async function createServer(port: number) {
     }
     // a map because, players can be removed and added when client socket disconnects or connects 
     // (ws is attached -> the Room & Playerid)
-    const players = new Map<IPlayerBin["playerid"], IPlayerBin>();
+    const players = new Map<IPlayerClient["playerid"], IPlayerClient>();
 
-    const player: IPlayerBin = {
-        room: "",
-        playerid: 0,
-        x: 0,
-        y: 0,
-        vx: 0,
-        vy: 0,
-    };
+
     function subscriptionHandler(message: Buffer, channel: Buffer) {
+        //NOTE:::::::// CHANGE THIS TO REFLECT game displacement, then send to all the clients
+        //
+
+        //
+        //
         console.log("SubscriptionHandler message is this", message.constructor.name);
         // decode the first 2 bytes. If it's a Number less than 10 (Room string's length) ,
         // then the message is for Game engine.
         // Else, the stored bytes would be {" encoded to utf8 -> which would be 8827 @littleendian, 
         // & 31522 @bigendian. Then, it's for Chat engine.
-        const length = message.readUint16LE(0); // Little endian
-
-        if (length <= 10) { // ie; eg; Room ABCDE => length is 10
+        const firstLetter = message[0]?.toString();
+        console.log(firstLetter);
+        if (firstLetter === "R") { // ie; eg; Room ABCDE => length is 10
             // For game engine
             // Buffer is an extension of Uint8Array & has many apis attached. So it doesn't need to be 
             // decoded into a string using TextDecoder after getting Uint8Array view of an arrayBuffer
@@ -82,7 +81,7 @@ export default async function createServer(port: number) {
             rooms[room]?.sockets.forEach((socket) => socket.send(message));
         }
 
-        if (length > 10) {
+        if (firstLetter === "{") {
             // For chat engine
 
             const room = channel.toString();
@@ -105,22 +104,31 @@ export default async function createServer(port: number) {
         ws.on('message', async function message(data, isBinary) {
             if (isBinary && data instanceof ArrayBuffer) {
                 // Game engine 
-                binaryDecoder(data); // decode with config set as little endian as bytes are 
+                const playerclient: IPlayerClient = {
+                    room: "",
+                    playerid: 0,
+                    left: 0,
+                    right: 0,
+                    up: 0,
+                    down: 0
+                }
+                binaryDecoder(data, playerclient); // decode with config set as little endian as bytes are 
                 // written into the arrayBuffer using the config of little endianness
+                const displacement = updater(playerclient);
+
+
                 if ((ws as any).playerid === undefined) {
-                    (ws as any).playerid = player.playerid;
+                    (ws as any).playerid = playerclient.playerid;
                 }
-                // set Server data for the player
-                if (!players.has(player.playerid)) {
-                    // if there is no map set with the global player, then set the Map. otherwise
+                // set Server data for the playerclient
+                if (!players.has(playerclient.playerid)) {
+                    // if there is no map set with the global playerclient, then set the Map. otherwise
                     // the Map's value will be updated automatically
-                    players.set(player.playerid, player);
-
+                    players.set(playerclient.playerid, playerclient);
                 }
 
-                console.log("here is the data that is published from Gameengine", data);
-                console.log(Buffer.from(data));
-                await client.publish(player.room, Buffer.from(data));
+                console.log(Buffer.from(displacement));
+                await client.publish(playerclient.room, Buffer.from(displacement));
             } else {
                 // a String
                 // Chat engine
@@ -153,25 +161,58 @@ export default async function createServer(port: number) {
         });
     })
 
-    function binaryDecoder(data: ArrayBuffer) {
+    function binaryDecoder(data: ArrayBuffer, playerclient: IPlayerClient) {
         //((I use Dataview instead of TypedArrays to get a view of ArrayBuffer bcs I need to
         // store different datatypes inside the ArrayBuffer))
-        const view = new DataView(data);
-
-        // string would be encoded like this : 12encodedstring where 12 is the length of encoded bytes (same 
-        // as the number of chars - which would be stored in a fixed memory like int8 or int16)
-
-        // ArrayBuffer is of 11 bytes + 6 bytes
-        const strlength = view.getUint16(0, true); // should be looked as little endian
-        console.log("stringlength", strlength);
-        const typedArray = new Uint8Array(data, 2, strlength); //strlength would be 6 chars ie; 6 bytes: Room 1, Room 2 ,etc..
+        const ROOM_BYTES = 6;
+        const uint8StringView = new Uint8Array(data, 0, ROOM_BYTES);
         const decoder = new TextDecoder();
-        player.room = decoder.decode(typedArray);
-        player.playerid = view.getUint32(strlength + 2, true)
-        player.x = view.getFloat32(strlength + 6, true);
-        player.y = view.getFloat32(strlength + 10, true);
-        player.vx = view.getFloat32(strlength + 14, true);
-        player.vy = view.getFloat32(strlength + 18, true);
+        playerclient.room = decoder.decode(uint8StringView);
+
+        const uint8ArrayView = new Uint8Array(data, ROOM_BYTES);
+
+        if (uint8ArrayView[0] === undefined || uint8ArrayView[1] === undefined) {
+            throw new Error("playerid is undefined or directions undefined");
+        }
+
+        playerclient.playerid = uint8ArrayView[0];
+        const directionPacked = uint8ArrayView[1];
+
+        playerclient.left = (directionPacked >> 3 & 1) as Binary;
+        console.log(playerclient.left);
+        playerclient.right = (directionPacked >> 2 & 1) as Binary;
+        playerclient.up = (directionPacked >> 1 & 1) as Binary;
+        playerclient.down = (directionPacked >> 0 & 1) as Binary;
+    }
+    function updater(playerclient: IPlayerClient) {
+        // update x, y , vx, vy
+        //NOTE:: // CONSTANTS NEED TO UPDATE LATER
+        const vx = 10;
+        const vy = 10;
+        const dt = 0.1
+        let x: number = 0;
+        if (playerclient.left) {
+            x = playerclient.left * vx * dt;
+        }
+        if (playerclient.right) {
+            x = playerclient.right * vx * dt;
+        }
+
+        let y: number = 0;
+        if (playerclient.up) {
+            y = playerclient.up * vy * dt;
+        }
+        if (playerclient.down) {
+            y = playerclient.down * vy * dt;
+        }
+
+        // convert x, y to binary then publish to other servers (ie; redis clients)
+        const arrayBuffer = new ArrayBuffer(4);
+        const uint16ArrayView = new Uint16Array(arrayBuffer);
+
+        uint16ArrayView[0] = x;
+        uint16ArrayView[1] = y;
+        return arrayBuffer;
     }
 
 }
