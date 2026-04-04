@@ -2,7 +2,7 @@
 
 import { useContext, useEffect, useRef } from "react"
 import update from "./_services/update";
-import render from "./_services/render";
+import renderPlayers from "./_services/render";
 import { setupHandles } from "./_services/update";
 import { PlayerContext } from "./_context/playerContext";
 
@@ -13,7 +13,6 @@ export interface IPlayerState {
     y: number;
 }
 
-let renderPlayer: IPlayerState;
 const players = new Map<IPlayerState["playerid"], IPlayerState>();
 
 
@@ -64,11 +63,11 @@ export default function GameEngine() {
         if (dataRef.current) {
             //mutates the specific player
             // if (!renderPlayer) {}
-            renderPlayer = binaryDecoder(dataRef.current, players);
+            binaryDecoderAndPlayersUpdater(dataRef.current, players);
 
         }
 
-        render(renderPlayer, ctxRef.current!);
+        renderPlayers(players, ctxRef.current!);
         dataRef.current = null; // make it null after each ws message arrives
     }
 
@@ -78,7 +77,7 @@ export default function GameEngine() {
     )
 
 }
-function binaryDecoder(data: ArrayBuffer, players: Map<IPlayerState["playerid"], IPlayerState>) {
+function binaryDecoderAndPlayersUpdater(data: ArrayBuffer, players: Map<IPlayerState["playerid"], IPlayerState>) {
 
     const uint8ArrayRoomView = new Uint8Array(data, 0, 6);
     const room = (new TextDecoder).decode(uint8ArrayRoomView);
@@ -102,25 +101,4 @@ function binaryDecoder(data: ArrayBuffer, players: Map<IPlayerState["playerid"],
         renderPlayer = { room, playerid, x, y};
         players.set(playerid, renderPlayer);
     }
-    return renderPlayer;
 }
-// function binaryDecoder(player: IPlayerBin, data: ArrayBuffer) {
-//     //((I use Dataview instead of TypedArrays to get a view of ArrayBuffer bcs I need to
-//     // store different datatypes inside the ArrayBuffer))
-//     const view = new DataView(data);
-//
-//     // string would be encoded like this : 12encodedstring where 12 is the length of encoded bytes (same 
-//     // as the number of chars - which would be stored in a fixed memory like int8 or int16)
-//
-//     // ArrayBuffer is of 11 bytes + 6 bytes
-//     const strlength = view.getUint16(0, true); // endianness should be little endian - as it's written in the 
-//     // arraybuffer as littleendian when written by using views
-//     const typedArray = new Uint8Array(data, 2, strlength); //strlength would be 6 chars ie; 6 bytes: Room 1, Room 2 ,etc..
-//     const decoder = new TextDecoder();
-//     player.room = decoder.decode(typedArray);
-//     player.playerid = view.getUint32(strlength + 2, true)
-//     player.x = view.getFloat32(strlength + 6, true);
-//     player.y = view.getFloat32(strlength + 10, true);
-//     player.vx = view.getFloat32(strlength + 14, true);
-//     player.vy = view.getFloat32(strlength + 18, true);
-// }
