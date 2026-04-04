@@ -6,25 +6,18 @@ import render from "./_services/render";
 import { setupHandles } from "./_services/update";
 import { PlayerContext } from "./_context/playerContext";
 
-export interface IPlayerBin {
+export interface IPlayerState {
+    room: string;
+    playerid: number;
     x: number;
     y: number;
 }
 
-const renderPlayer: IPlayerBin = {
-    x: 0,
-    y: 0,
-}
+let renderPlayer: IPlayerState;
+const players = new Map<IPlayerState["playerid"], IPlayerState>();
 
-type Binary = 0 | 1;
-interface IPlayerClient {
-    room: string;
-    playerid: number;
-    left: Binary;
-    right: Binary;
-    up: Binary;
-    down: Binary;
-}
+
+
 export default function GameEngine() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const ctxRef = useRef<CanvasRenderingContext2D>(null);
@@ -69,8 +62,10 @@ export default function GameEngine() {
         // simulate results/game data being send from server to client - where the client just renders it
         // (DUMB CLIENT - DOESN'T Do ANY Calculations)
         if (dataRef.current) {
-            //mutates player
-            binaryDecoder(dataRef.current, renderPlayer);
+            //mutates the specific player
+            // if (!renderPlayer) {}
+            renderPlayer = binaryDecoder(dataRef.current, players);
+
         }
 
         render(renderPlayer, ctxRef.current!);
@@ -83,10 +78,31 @@ export default function GameEngine() {
     )
 
 }
-function binaryDecoder(data: ArrayBuffer, player: IPlayerBin) {
-    const uint16ArrayView = new Uint16Array(data);
-    player.x = uint16ArrayView[0];
-    player.y = uint16ArrayView[1];
+function binaryDecoder(data: ArrayBuffer, players: Map<IPlayerState["playerid"], IPlayerState>) {
+
+    const uint8ArrayRoomView = new Uint8Array(data, 0, 6);
+    const room = (new TextDecoder).decode(uint8ArrayRoomView);
+
+    const uint8ArrayView = new Uint8Array(data, 6, 1);
+    const playerid = uint8ArrayView[0];
+
+    const uint16ArrayView = new Int16Array(data, 8);
+    const x = uint16ArrayView[0];
+    const y = uint16ArrayView[1];
+
+    // mutating the Mapped player object and returning only that object
+    let renderPlayer = players.get(playerid);
+    if (renderPlayer) {
+        renderPlayer.room = room;
+        renderPlayer.playerid = playerid;
+        renderPlayer.x = x;
+        renderPlayer.y = y;
+
+    } else {
+        renderPlayer = { room, playerid, x, y};
+        players.set(playerid, renderPlayer);
+    }
+    return renderPlayer;
 }
 // function binaryDecoder(player: IPlayerBin, data: ArrayBuffer) {
 //     //((I use Dataview instead of TypedArrays to get a view of ArrayBuffer bcs I need to

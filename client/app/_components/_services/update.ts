@@ -85,24 +85,6 @@ export const playerclient: IPlayerClient = {
 }
 
 export default function updateServer(tFrame: DOMHighResTimeStamp, ws1: WebSocket, playerid: number, room: string) {
-    // const dt = tFrame - lastTime;
-    // lastTime = tFrame;
-
-    // if (right) {
-    //     player.x += player.vx * dt;
-    //     console.log(player.vx, dt);
-    //     console.log("inside update x ", player.x);
-    // }
-    // if (left) {
-    //     player.x -= player.vx * dt;
-    // }
-    // if (up) {
-    //     player.y -= player.vy * dt;
-    // }
-    // if (down) {
-    //     player.y += player.vy * dt;
-    // }
-
 
     playerclient.room = room;
     playerclient.playerid = playerid;
@@ -131,7 +113,6 @@ function binaryDirectionConverter({ left, right, up, down }: IDirections, player
     const uint8bufferView = new Uint8Array(arrayBuffer);
     const encoder = new TextEncoder();
     const uint8StringView = encoder.encode(playerclient.room);
-    // 2 bytes are left unused
 
     uint8bufferView.set(uint8StringView, 0);
     uint8bufferView[6] = playerclient.playerid;

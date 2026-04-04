@@ -38,6 +38,12 @@ interface IPlayerClient {
     down: Binary;
 }
 
+export interface IPlayerState {
+    room: string;
+    playerid: number;
+    x: number;
+    y: number;
+}
 export default async function createServer(port: number) {
 
     const app = express();
@@ -56,22 +62,30 @@ export default async function createServer(port: number) {
     }
     // a map because, players can be removed and added when client socket disconnects or connects 
     // (ws is attached -> the Room & Playerid)
-    const players = new Map<IPlayerClient["playerid"], IPlayerClient>();
+    const players = new Map<IPlayerState["playerid"], IPlayerState>();
 
+    const playerclient: IPlayerClient = {
+        room: "",
+        playerid: 0,
+        left: 0,
+        right: 0,
+        up: 0,
+        down: 0
+    }
 
     function subscriptionHandler(message: Buffer, channel: Buffer) {
         //NOTE:::::::// CHANGE THIS TO REFLECT game displacement, then send to all the clients
         //
 
+        console.log("HEYYYYYYYYYYY")
         //
         //
-        console.log("SubscriptionHandler message is this", message.constructor.name);
         // decode the first 2 bytes. If it's a Number less than 10 (Room string's length) ,
         // then the message is for Game engine.
         // Else, the stored bytes would be {" encoded to utf8 -> which would be 8827 @littleendian, 
         // & 31522 @bigendian. Then, it's for Chat engine.
-        const firstLetter = message[0]?.toString();
-        console.log(firstLetter);
+        const firstLetter = String.fromCharCode(message[0]!);
+        console.log("first letter is this", message.toString()[0], "hello");
         if (firstLetter === "R") { // ie; eg; Room ABCDE => length is 10
             // For game engine
             // Buffer is an extension of Uint8Array & has many apis attached. So it doesn't need to be 
@@ -83,7 +97,7 @@ export default async function createServer(port: number) {
 
         if (firstLetter === "{") {
             // For chat engine
-
+            console.log("TREUUUUUUUU")
             const room = channel.toString();
             console.log(rooms);
             rooms[room]?.sockets.forEach((socket) => socket.send(message.toString()));
@@ -104,31 +118,37 @@ export default async function createServer(port: number) {
         ws.on('message', async function message(data, isBinary) {
             if (isBinary && data instanceof ArrayBuffer) {
                 // Game engine 
-                const playerclient: IPlayerClient = {
-                    room: "",
-                    playerid: 0,
-                    left: 0,
-                    right: 0,
-                    up: 0,
-                    down: 0
-                }
-                binaryDecoder(data, playerclient); // decode with config set as little endian as bytes are 
-                // written into the arrayBuffer using the config of little endianness
-                const displacement = updater(playerclient);
 
+                // Decode directions data
+                binaryDecoder(data, playerclient); // decode with config set as little endian as bytes are 
 
                 if ((ws as any).playerid === undefined) {
                     (ws as any).playerid = playerclient.playerid;
                 }
-                // set Server data for the playerclient
-                if (!players.has(playerclient.playerid)) {
-                    // if there is no map set with the global playerclient, then set the Map. otherwise
-                    // the Map's value will be updated automatically
-                    players.set(playerclient.playerid, playerclient);
+
+
+                // Set server longliving PlayerState data (Inside the Map)
+                let playerState: IPlayerState | undefined = players.get(playerclient.playerid);
+                if (!playerState) {
+                    playerState = {
+                        room: playerclient.room,
+                        playerid: playerclient.playerid,
+                        x: 10,
+                        y: 10,
+                    }
+                    // set Server data for the playerState
+                    players.set(playerclient.playerid, playerState);
                 }
 
+
+                const displacement = updater(playerclient, playerState);
+                console.log("Displacement", displacement);
+
+
                 console.log(Buffer.from(displacement));
-                await client.publish(playerclient.room, Buffer.from(displacement));
+                console.log("THIS IS THE ROOM", playerState.room);
+                await client.publish(playerState.room, Buffer.from(displacement));
+                console.log("Published")
             } else {
                 // a String
                 // Chat engine
@@ -156,7 +176,7 @@ export default async function createServer(port: number) {
 
     return new Promise<[Server, WebSocketServer, ClientType, ClientType]>((res, _) => {
         const serverinstance = server.listen(port, () => {
-            console.log("server running on ", port);
+            console.log("server running on", port);
             res([serverinstance, wss, client, clientSub]);
         });
     })
@@ -183,35 +203,41 @@ export default async function createServer(port: number) {
         playerclient.right = (directionPacked >> 2 & 1) as Binary;
         playerclient.up = (directionPacked >> 1 & 1) as Binary;
         playerclient.down = (directionPacked >> 0 & 1) as Binary;
+        console.log(playerclient);
     }
-    function updater(playerclient: IPlayerClient) {
+    function updater(playerclient: IPlayerClient, playerState: IPlayerState) {
         // update x, y , vx, vy
         //NOTE:: // CONSTANTS NEED TO UPDATE LATER
         const vx = 10;
         const vy = 10;
         const dt = 0.1
-        let x: number = 0;
         if (playerclient.left) {
-            x = playerclient.left * vx * dt;
+            playerState.x = playerState.x - playerclient.left * vx * dt;
         }
         if (playerclient.right) {
-            x = playerclient.right * vx * dt;
+            playerState.x = playerState.x + playerclient.right * vx * dt;
         }
 
-        let y: number = 0;
         if (playerclient.up) {
-            y = playerclient.up * vy * dt;
+            playerState.y = playerState.y - playerclient.up * vy * dt;
         }
         if (playerclient.down) {
-            y = playerclient.down * vy * dt;
+            playerState.y = playerState.y + playerclient.down * vy * dt;
         }
 
         // convert x, y to binary then publish to other servers (ie; redis clients)
-        const arrayBuffer = new ArrayBuffer(4);
-        const uint16ArrayView = new Uint16Array(arrayBuffer);
+        const arrayBuffer = new ArrayBuffer(12);
+        const uint8ArrayView = new Uint8Array(arrayBuffer);
+        const int16ArrayView = new Int16Array(arrayBuffer, 8);
 
-        uint16ArrayView[0] = x;
-        uint16ArrayView[1] = y;
+        // one byte gap here
+        const encoder = new TextEncoder();
+        const uint8StringView = encoder.encode(playerState.room);
+        uint8ArrayView.set(uint8StringView, 0);
+        uint8ArrayView[6] = playerState.playerid;
+        // automatically truncates the fractional part as it's int and not float
+        int16ArrayView[0] = playerState.x;
+        int16ArrayView[1] = playerState.y;
         return arrayBuffer;
     }
 

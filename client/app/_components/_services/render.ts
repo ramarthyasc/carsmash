@@ -1,10 +1,12 @@
-import { IPlayerBin } from "../gameEngine";
+import { IPlayerState } from "../gameEngine";
 
-export default function render(player: IPlayerBin, ctx: CanvasRenderingContext2D) {
+export default function render(player: IPlayerState | undefined, ctx: CanvasRenderingContext2D) {
+    const INIT_X = 10;
+    const INIT_Y = 10;
 
     ctx.imageSmoothingEnabled = false;
-    const x = Math.round(player.x);
-    const y = Math.round(player.y);
+    const x = Math.round(player?.x ?? INIT_X);
+    const y = Math.round(player?.y ?? INIT_Y);
 
     // Math.ceil for not having blurry edges due to drawing the border of the
     // filledRect in the center of canvas pixels (refer MDN)
