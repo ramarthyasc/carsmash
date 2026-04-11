@@ -1,3 +1,5 @@
+import { IPlayerState } from "../gameEngine";
+
 // Add event listeners globally
 let right: Binary = 0;
 let left: Binary = 0;
@@ -54,17 +56,6 @@ export function setupHandles() {
 };
 
 
-// State at Global scope
-let lastTime = 0;
-// export let game: IGame = {
-//     player: {
-//         x: 50,
-//         y: 50,
-//         vx: 0.1, // constant speed
-//         vy: 0.1, // constant speed
-//     }
-// };
-
 
 interface IPlayerClient {
     room: string;
@@ -88,8 +79,17 @@ export default function updateServer(tFrame: DOMHighResTimeStamp, ws1: WebSocket
 
     playerclient.room = room;
     playerclient.playerid = playerid;
-    const buffer = binaryDirectionConverter({ left, right, up, down }, playerclient);
+    playerclient.left = left;
+    playerclient.right = right;
+    playerclient.up = up;
+    playerclient.down = down;
+    const buffer = binaryDirectionConverter(playerclient);
     ws1!.send(buffer);
+
+
+    // dummy calculations for clientside prediction
+    // updater(playerclient);
+
 }
 
 type Binary = 0 | 1;
@@ -101,14 +101,14 @@ interface IDirections {
     down: Binary;
 }
 
-function binaryDirectionConverter({ left, right, up, down }: IDirections, playerclient: IPlayerClient) {
+function binaryDirectionConverter(playerclient: IPlayerClient) {
     // each key press is send to the server continuously  -> left, right, up, down
     const BYTESNUM = 8;
     const directionPacked =
-        left << 3 |
-        right << 2 |
-        up << 1 |
-        down << 0;
+        playerclient.left << 3 |
+        playerclient.right << 2 |
+        playerclient.up << 1 |
+        playerclient.down << 0;
     const arrayBuffer = new ArrayBuffer(BYTESNUM);
     const uint8bufferView = new Uint8Array(arrayBuffer);
     const encoder = new TextEncoder();
@@ -122,26 +122,23 @@ function binaryDirectionConverter({ left, right, up, down }: IDirections, player
     return arrayBuffer;
 }
 
-// function binaryConverter(player: IPlayerBin) {
-//     // Length of string, Encode the string 'Room' and embed into Arraybuffer
-//     const arrayBuffer = new ArrayBuffer(28);
-//     // Room string Length
-//     const uint16bufferView = new Uint16Array(arrayBuffer, 0);
-//     uint16bufferView[0] = player.room.length;
-//     //Room
-//     const uint8bufferView = new Uint8Array(arrayBuffer, 2);
-//     const encoder = new TextEncoder();
-//     const strTypedArray = encoder.encode(player.room);
-//     uint8bufferView.set(strTypedArray, 0);
-//
-//     const uint32bufferView = new Uint32Array(arrayBuffer, 2 + strTypedArray.length);
-//     uint32bufferView[0] = player.playerid;
-//     // Embed playerid, x, y, vx, vy in the same order
-//     const float32bufferView = new Float32Array(arrayBuffer, 6 + strTypedArray.length);
-//     float32bufferView[0] = player.x;
-//     float32bufferView[1] = player.y;
-//     float32bufferView[2] = player.vx;
-//     float32bufferView[3] = player.vy;
-//
-//     return arrayBuffer;
-// }
+function updater(playerclient: IPlayerClient, playerState: IPlayerState) {
+    // update x, y , vx, vy
+    //NOTE:: // CONSTANTS NEED TO UPDATE LATER
+    const vx = 10;
+    const vy = 10;
+    const dt = 0.1
+    if (playerclient.left) {
+        playerState.x = playerState.x - playerclient.left * vx * dt;
+    }
+    if (playerclient.right) {
+        playerState.x = playerState.x + playerclient.right * vx * dt;
+    }
+
+    if (playerclient.up) {
+        playerState.y = playerState.y - playerclient.up * vy * dt;
+    }
+    if (playerclient.down) {
+        playerState.y = playerState.y + playerclient.down * vy * dt;
+    }
+}

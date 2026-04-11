@@ -127,6 +127,7 @@ export default async function createServer(port: number) {
                 }
 
 
+
                 // Set server longliving PlayerState data (Inside the Map)
                 let playerState: IPlayerState | undefined = players.get(playerclient.playerid);
                 if (!playerState) {
