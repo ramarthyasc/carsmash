@@ -17,7 +17,6 @@ export function setupHandles() {
 
         switch (e.code) {
             case "KeyW":
-                console.log("hellooo")
                 up = 1;
                 break;
             case "KeyS":
@@ -77,7 +76,6 @@ export const playerclient: IPlayerClient = {
 
 export default function updateServer(tFrame: DOMHighResTimeStamp, ws1: WebSocket, playerid: number, room: string) {
 
-    console.log("HEYYYY", playerclient.playerid);
     playerclient.room = room;
     playerclient.playerid = playerid;
     playerclient.left = left;
@@ -85,7 +83,6 @@ export default function updateServer(tFrame: DOMHighResTimeStamp, ws1: WebSocket
     playerclient.up = up;
     playerclient.down = down;
     const buffer = binaryDirectionConverter(playerclient);
-    console.log("Playerclient id from Frontend", playerclient.playerid);
     ws1!.send(buffer);
 }
 
@@ -110,7 +107,6 @@ function binaryDirectionConverter(playerclient: IPlayerClient) {
     uint8bufferView[7] = directionPacked;
 
     const lalaUint8View = new Uint8Array(arrayBuffer, 6, 1);
-    console.log("LalaUint8View", lalaUint8View[0]);
 
 
 

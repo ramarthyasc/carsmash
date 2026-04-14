@@ -1,15 +1,16 @@
 import { IPlayerState } from "../gameEngine";
 import { IPlayerClient } from "./update";
 
-const clientPlayerState: IPlayerState = {
-    room: "",
-    playerid: 0,
-    x: 0,
-    y: 0
-};
 //dummy init value for all players
 const INIT_X = 10;
 const INIT_Y = 10;
+
+const clientPlayerState: IPlayerState = {
+    room: "",
+    playerid: 0,
+    x: INIT_X,
+    y: INIT_Y 
+};
 
 export default function renderPlayers(players: Map<IPlayerState["playerid"], IPlayerState>, playerclient: IPlayerClient,
     ctx: CanvasRenderingContext2D) {
@@ -28,8 +29,6 @@ export default function renderPlayers(players: Map<IPlayerState["playerid"], IPl
     for (const [_, player] of players) {
         let x;
         let y;
-        console.log("Player.playerid",player.playerid);
-        console.log("playerclient.playerid",playerclient.playerid);
         if (player.playerid === playerclient.playerid) {
             // clientside calculated values
             console.log("HELLOOOOOOOOOOOOO")
@@ -55,8 +54,7 @@ function updater(playerclient: IPlayerClient, clientPlayerState: IPlayerState) {
     const vy = 10;
     const dt = 0.1
 
-    clientPlayerState.x = INIT_X;
-    clientPlayerState.y = INIT_Y;
+
     clientPlayerState.playerid = playerclient.playerid;
     clientPlayerState.room = playerclient.room;
 
@@ -65,6 +63,7 @@ function updater(playerclient: IPlayerClient, clientPlayerState: IPlayerState) {
     }
     if (playerclient.right) {
         clientPlayerState.x = clientPlayerState.x + playerclient.right * vx * dt;
+        console.log("clientPlayerState.x here", clientPlayerState.x)
     }
 
     if (playerclient.up) {

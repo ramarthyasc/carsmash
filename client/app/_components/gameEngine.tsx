@@ -89,7 +89,6 @@ function binaryDecoderAndPlayersUpdater(data: ArrayBuffer, players: Map<IPlayerS
     const y = uint16ArrayView[1];
 
     // mutating the Mapped player object and returning only that object
-    console.log("HOLAAAA" ,playerid);
     let renderPlayer = players.get(playerid);
     if (renderPlayer) {
         renderPlayer.room = room;
