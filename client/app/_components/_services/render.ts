@@ -23,6 +23,34 @@ export default function renderPlayers(players: Map<IPlayerState["playerid"], IPl
 
     ctx.imageSmoothingEnabled = false;
 
+
+
+    function clientSidePrediction() {
+        // I have to enumerate each action (left / right / up / down) and remember it in the client side  
+
+        // I send the "done" action with that enumeration to the server
+
+
+        // I get the enumerated STATE back from the server
+
+        // On top of that recieved state with that enumeration, I calculate at the clientside, 
+        // the diff of the state from the enumerated server state, until my current clientside state.
+        // If the diff is equal to the calculation of state change by the actions starting from that enumerated action,
+        // from the clientside, then we predicted successfully.  - Don't do any change on the client state
+        //
+        // Else, it means that I "the client" cheated with speed/position
+        // hack or something in the client  - so I need to change my current position (client state) 
+        // to the calculated state ( by adding the calculated statechange (using the actions - starting 
+        // from the enumerated action(server sent enumeration)) on top of the enumerated server sent state )
+
+        
+        //That's it- then test the cheating side - where i can change the state (like hacker do) or network issue
+    }
+
+
+
+
+
     // render all players
     // For each frame, we have to clear the frame, then render the one frame with all the players
     ctx.clearRect(0, 0, 320, 180);
@@ -31,10 +59,8 @@ export default function renderPlayers(players: Map<IPlayerState["playerid"], IPl
         let y;
         if (player.playerid === playerclient.playerid) {
             // clientside calculated values
-            console.log("HELLOOOOOOOOOOOOO")
             x = Math.round(clientPlayerState.x);
             y = Math.round(clientPlayerState.y);
-
         } else {
             x = Math.round(player?.x ?? INIT_X);
             y = Math.round(player?.y ?? INIT_Y);
