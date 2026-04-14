@@ -1,7 +1,7 @@
 "use client"
 
 import { useContext, useEffect, useRef } from "react"
-import update from "./_services/update";
+import updateServer, { playerclient } from "./_services/update";
 import renderPlayers from "./_services/render";
 import { setupHandles } from "./_services/update";
 import { PlayerContext } from "./_context/playerContext";
@@ -55,7 +55,7 @@ export default function GameEngine() {
         requestAnimationFrame(main);
         // simulate commands being send to server 
         // (AUTHORITATIVE SERVER - does all the calculations);
-        update(tFrame, ws1!, playeridRef.current, room);
+        updateServer(tFrame, ws1!, playeridRef.current, room);
 
 
         // simulate results/game data being send from server to client - where the client just renders it
@@ -64,10 +64,9 @@ export default function GameEngine() {
             //mutates the specific player
             // if (!renderPlayer) {}
             binaryDecoderAndPlayersUpdater(dataRef.current, players);
-
         }
 
-        renderPlayers(players, ctxRef.current!);
+        renderPlayers(players, playerclient, ctxRef.current!);
         dataRef.current = null; // make it null after each ws message arrives
     }
 
@@ -90,6 +89,7 @@ function binaryDecoderAndPlayersUpdater(data: ArrayBuffer, players: Map<IPlayerS
     const y = uint16ArrayView[1];
 
     // mutating the Mapped player object and returning only that object
+    console.log("HOLAAAA" ,playerid);
     let renderPlayer = players.get(playerid);
     if (renderPlayer) {
         renderPlayer.room = room;

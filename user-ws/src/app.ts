@@ -11,22 +11,6 @@ export interface Room {
     sockets: WebSocket[];
 }
 
-// interface IPosition {
-//     x: number;
-//     y: number;
-// }
-// interface IVelocity {
-//     vx: number;
-//     vy: number;
-// }
-//
-// interface IPlayer {
-//     room: string;
-//     playerid: number;
-//     position: IPosition;
-//     velocity: IVelocity;
-// }
-
 type Binary = 0 | 1;
 
 interface IPlayerClient {
@@ -44,6 +28,9 @@ export interface IPlayerState {
     x: number;
     y: number;
 }
+const INIT_X = 10;
+const INIT_Y = 10;
+
 export default async function createServer(port: number) {
 
     const app = express();
@@ -77,7 +64,6 @@ export default async function createServer(port: number) {
         //NOTE:::::::// CHANGE THIS TO REFLECT game displacement, then send to all the clients
         //
 
-        console.log("HEYYYYYYYYYYY")
         //
         //
         // decode the first 2 bytes. If it's a Number less than 10 (Room string's length) ,
@@ -97,7 +83,6 @@ export default async function createServer(port: number) {
 
         if (firstLetter === "{") {
             // For chat engine
-            console.log("TREUUUUUUUU")
             const room = channel.toString();
             console.log(rooms);
             rooms[room]?.sockets.forEach((socket) => socket.send(message.toString()));
@@ -134,8 +119,8 @@ export default async function createServer(port: number) {
                     playerState = {
                         room: playerclient.room,
                         playerid: playerclient.playerid,
-                        x: 10,
-                        y: 10,
+                        x: INIT_X,
+                        y: INIT_Y,
                     }
                     // set Server data for the playerState
                     players.set(playerclient.playerid, playerState);
@@ -197,6 +182,7 @@ export default async function createServer(port: number) {
         }
 
         playerclient.playerid = uint8ArrayView[0];
+        console.log("PLAYer ID iS HEREEE", playerclient.playerid);
         const directionPacked = uint8ArrayView[1];
 
         playerclient.left = (directionPacked >> 3 & 1) as Binary;

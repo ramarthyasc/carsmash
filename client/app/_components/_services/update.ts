@@ -57,7 +57,7 @@ export function setupHandles() {
 
 
 
-interface IPlayerClient {
+export interface IPlayerClient {
     room: string;
     playerid: number;
     left: Binary;
@@ -77,6 +77,7 @@ export const playerclient: IPlayerClient = {
 
 export default function updateServer(tFrame: DOMHighResTimeStamp, ws1: WebSocket, playerid: number, room: string) {
 
+    console.log("HEYYYY", playerclient.playerid);
     playerclient.room = room;
     playerclient.playerid = playerid;
     playerclient.left = left;
@@ -84,22 +85,12 @@ export default function updateServer(tFrame: DOMHighResTimeStamp, ws1: WebSocket
     playerclient.up = up;
     playerclient.down = down;
     const buffer = binaryDirectionConverter(playerclient);
+    console.log("Playerclient id from Frontend", playerclient.playerid);
     ws1!.send(buffer);
-
-
-    // dummy calculations for clientside prediction
-    // updater(playerclient);
-
 }
 
 type Binary = 0 | 1;
 
-interface IDirections {
-    left: Binary;
-    right: Binary;
-    up: Binary;
-    down: Binary;
-}
 
 function binaryDirectionConverter(playerclient: IPlayerClient) {
     // each key press is send to the server continuously  -> left, right, up, down
@@ -118,27 +109,11 @@ function binaryDirectionConverter(playerclient: IPlayerClient) {
     uint8bufferView[6] = playerclient.playerid;
     uint8bufferView[7] = directionPacked;
 
+    const lalaUint8View = new Uint8Array(arrayBuffer, 6, 1);
+    console.log("LalaUint8View", lalaUint8View[0]);
+
+
 
     return arrayBuffer;
 }
 
-function updater(playerclient: IPlayerClient, playerState: IPlayerState) {
-    // update x, y , vx, vy
-    //NOTE:: // CONSTANTS NEED TO UPDATE LATER
-    const vx = 10;
-    const vy = 10;
-    const dt = 0.1
-    if (playerclient.left) {
-        playerState.x = playerState.x - playerclient.left * vx * dt;
-    }
-    if (playerclient.right) {
-        playerState.x = playerState.x + playerclient.right * vx * dt;
-    }
-
-    if (playerclient.up) {
-        playerState.y = playerState.y - playerclient.up * vy * dt;
-    }
-    if (playerclient.down) {
-        playerState.y = playerState.y + playerclient.down * vy * dt;
-    }
-}

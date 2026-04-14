@@ -14,7 +14,7 @@ export const PlayerContext = createContext<PlayerContextType | null>(null);
 
 export default function PlayerProvider({ children }: { children: React.ReactNode }) {
     const [room, setRoom] = useState<string>("Room A");
-    const playeridRef = useRef(1000 + Math.floor(Math.random() * 9000));
+    const playeridRef = useRef(0 + Math.floor(Math.random() * 256));
     const [ws1, setWs1] = useState<WebSocket>();
     const [chat, setChat] = useState<string>("");
 
