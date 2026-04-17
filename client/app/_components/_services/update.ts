@@ -63,6 +63,7 @@ export interface IPlayerClient {
     right: Binary;
     up: Binary;
     down: Binary;
+    actionNum: number;
 }
 
 export const playerclient: IPlayerClient = {
@@ -71,10 +72,102 @@ export const playerclient: IPlayerClient = {
     left: 0,
     right: 0,
     up: 0,
-    down: 0
+    down: 0,
+    actionNum: 0
+}
+interface Action {
+    playerclient: IPlayerClient;
+    actionNum: number;
 }
 
+class Node {
+    public val: Action;
+    public next: null | Node;
+    constructor(val: Action, next = null) {
+        this.val = val;
+        this.next = next;
+    }
+}
+
+class ClientSideQueue {
+    private head: Node | null;
+    private tail: Node | null;
+    public length: number;
+    constructor() {
+        this.head = null;
+        this.tail = null;
+        this.length = 0;
+    }
+
+    enqueue(val: Action) {
+        if (this.head === null || this.tail === null) {
+            this.head = new Node(val);
+            this.tail = this.head;
+
+        } else {
+            const temp = new Node(val);
+            this.tail.next = temp;
+            this.tail = temp;
+            // increase length
+            length++;
+
+        }
+        return this.head;
+    }
+
+    dequeue() {
+        if (this.head === null || this.tail === null) {
+            return null;
+        } else {
+            const temp = this.head;
+            this.head = this.head.next;
+            temp.next = null;
+
+            // decrease length
+            length--;
+
+            return temp;
+
+
+        }
+
+    }
+
+
+
+
+}
+
+// starting point - Global object
+let actionNum = 1;
+const queue = new ClientSideQueue();
+
 export default function updateServer(tFrame: DOMHighResTimeStamp, ws1: WebSocket, playerid: number, room: string) {
+
+    function clientSideOwnPlayerPrediction(playerclient: IPlayerClient, queue: ClientSideQueue) {
+        // I have to enumerate each action (left / right / up / down) and remember it in the client side  
+        const action = { playerclient, actionNum };
+        queue.enqueue(action);
+        actionNum++;
+
+        // I send the "done" action with that enumeration to the server
+
+
+        // I get the enumerated STATE back from the server
+
+        // On top of that recieved state with that enumeration, I calculate at the clientside, 
+        // the diff of the state from the enumerated server state, until my current clientside state.
+        // If the diff is equal to the calculation of state change by the actions starting from that enumerated action,
+        // from the clientside, then we predicted successfully.  - Don't do any change on the client state
+        //
+        // Else, it means that I "the client" cheated with speed/position
+        // hack or something in the client  - so I need to change my current position (client state) 
+        // to the calculated state ( by adding the calculated statechange (using the actions - starting 
+        // from the enumerated action(server sent enumeration)) on top of the enumerated server sent state )
+
+
+        //That's it- then test the cheating side - where i can change the state (like hacker do) or network issue
+    }
 
     playerclient.room = room;
     playerclient.playerid = playerid;
