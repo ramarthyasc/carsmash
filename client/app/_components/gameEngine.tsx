@@ -1,16 +1,18 @@
 "use client"
 
 import { useContext, useEffect, useRef } from "react"
-import updateServer, { playerclient } from "./_services/update";
+import updateServer, { playerAction } from "./_services/update";
 import renderPlayers from "./_services/render";
 import { setupHandles } from "./_services/update";
 import { PlayerContext } from "./_context/playerContext";
+import * as PACKET from './_services/constants/binaryConverter';
 
 export interface IPlayerState {
     room: string;
     playerid: number;
     x: number;
     y: number;
+    actionNum: number;
 }
 
 const players = new Map<IPlayerState["playerid"], IPlayerState>();
@@ -66,7 +68,7 @@ export default function GameEngine() {
             binaryDecoderAndPlayersUpdater(dataRef.current, players);
         }
 
-        renderPlayers(players, playerclient, ctxRef.current!);
+        renderPlayers(players, playerAction, ctxRef.current!);
         dataRef.current = null; // make it null after each ws message arrives
     }
 
@@ -78,15 +80,17 @@ export default function GameEngine() {
 }
 function binaryDecoderAndPlayersUpdater(data: ArrayBuffer, players: Map<IPlayerState["playerid"], IPlayerState>) {
 
-    const uint8ArrayRoomView = new Uint8Array(data, 0, 6);
+
+    const uint8ArrayRoomView = new Uint8Array(data, 0, PACKET.ROOM_BYTE);
     const room = (new TextDecoder).decode(uint8ArrayRoomView);
 
-    const uint8ArrayView = new Uint8Array(data, 6, 1);
-    const playerid = uint8ArrayView[0];
+    const view = new DataView(data);
+    const playerid = view.getUint32(PACKET.ROOM_BYTE, true);
 
-    const uint16ArrayView = new Int16Array(data, 8);
-    const x = uint16ArrayView[0];
-    const y = uint16ArrayView[1];
+    const x = view.getInt16(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE, true);
+    const y = view.getInt16(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + PACKET.POSITION_BYTE, true);
+
+    const actionNum = view.getUint32(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + 2*PACKET.POSITION_BYTE, true);
 
     // mutating the Mapped player object and returning only that object
     let renderPlayer = players.get(playerid);
@@ -95,9 +99,10 @@ function binaryDecoderAndPlayersUpdater(data: ArrayBuffer, players: Map<IPlayerS
         renderPlayer.playerid = playerid;
         renderPlayer.x = x;
         renderPlayer.y = y;
+        renderPlayer.actionNum = actionNum;
 
     } else {
-        renderPlayer = { room, playerid, x, y};
+        renderPlayer = { room, playerid, x, y, actionNum };
         players.set(playerid, renderPlayer);
     }
 }

@@ -1,25 +1,27 @@
 import { IPlayerState } from "../gameEngine";
-import { IPlayerClient } from "./update";
+import { IPlayerAction, queue } from "./update";
 
 //dummy init value for all players
 const INIT_X = 10;
 const INIT_Y = 10;
 
-const clientPlayerState: IPlayerState = {
+const predictedPlayerState: IPlayerState = {
     room: "",
     playerid: 0,
     x: INIT_X,
-    y: INIT_Y 
+    y: INIT_Y,
+    actionNum: 0
+
 };
 
-export default function renderPlayers(players: Map<IPlayerState["playerid"], IPlayerState>, playerclient: IPlayerClient,
+export default function renderPlayers(players: Map<IPlayerState["playerid"], IPlayerState>, playerAction: IPlayerAction,
     ctx: CanvasRenderingContext2D) {
 
 
 
     // animate/render the current player that iam working with
     // dummy calculations for clientside prediction
-    updater(playerclient, clientPlayerState);
+    updater(players, playerAction, predictedPlayerState);
 
     ctx.imageSmoothingEnabled = false;
 
@@ -36,10 +38,10 @@ export default function renderPlayers(players: Map<IPlayerState["playerid"], IPl
     for (const [_, player] of players) {
         let x;
         let y;
-        if (player.playerid === playerclient.playerid) {
+        if (player.playerid === playerAction.playerid) {
             // clientside calculated values
-            x = Math.round(clientPlayerState.x);
-            y = Math.round(clientPlayerState.y);
+            x = Math.round(predictedPlayerState.x);
+            y = Math.round(predictedPlayerState.y);
         } else {
             x = Math.round(player?.x ?? INIT_X);
             y = Math.round(player?.y ?? INIT_Y);
@@ -52,7 +54,8 @@ export default function renderPlayers(players: Map<IPlayerState["playerid"], IPl
 }
 
 
-function updater(playerclient: IPlayerClient, clientPlayerState: IPlayerState) {
+function updater(players: Map<IPlayerState["playerid"], IPlayerState>, 
+                 playerAction: IPlayerAction, predictedPlayerState: IPlayerState) {
     // update x, y , vx, vy
     //NOTE:: // CONSTANTS NEED TO UPDATE LATER - SAME AS THAT OF SERVER
     const vx = 10;
@@ -60,21 +63,43 @@ function updater(playerclient: IPlayerClient, clientPlayerState: IPlayerState) {
     const dt = 0.1
 
 
-    clientPlayerState.playerid = playerclient.playerid;
-    clientPlayerState.room = playerclient.room;
+    predictedPlayerState.playerid = playerAction.playerid;
+    predictedPlayerState.room = playerAction.room;
+    predictedPlayerState.actionNum = playerAction.actionNum;
 
-    if (playerclient.left) {
-        clientPlayerState.x = clientPlayerState.x - playerclient.left * vx * dt;
+    if (playerAction.left) {
+        predictedPlayerState.x = predictedPlayerState.x - playerAction.left * vx * dt;
     }
-    if (playerclient.right) {
-        clientPlayerState.x = clientPlayerState.x + playerclient.right * vx * dt;
-        console.log("clientPlayerState.x here", clientPlayerState.x)
+    if (playerAction.right) {
+        predictedPlayerState.x = predictedPlayerState.x + playerAction.right * vx * dt;
+        console.log("predictedPlayerState.x here", predictedPlayerState.x)
     }
 
-    if (playerclient.up) {
-        clientPlayerState.y = clientPlayerState.y - playerclient.up * vy * dt;
+    if (playerAction.up) {
+        predictedPlayerState.y = predictedPlayerState.y - playerAction.up * vy * dt;
     }
-    if (playerclient.down) {
-        clientPlayerState.y = clientPlayerState.y + playerclient.down * vy * dt;
+    if (playerAction.down) {
+        predictedPlayerState.y = predictedPlayerState.y + playerAction.down * vy * dt;
     }
+    
+
+    //NOTE: // After the Prediction calculation Above, We check if the Prediction is correct or not - BELOW : 
+
+    // when server's state is sent, then i have to calculate the diff and verify if current clientstate is correct
+    
+    //// if server playerstate of this client's playerid has not reached this client yet, then don't do anything
+    const thisPlayerState = players.get(playerAction.playerid);
+    if (!thisPlayerState) { return; }
+
+    const firstPlayerAction = queue.dequeue()!; ///// the queue won't become empty 
+
+    //// firstPlayerAction.actionNum === thisPlayerState.actionNum;
+
+    // calculate the x & y states after adding up the actions until the present server state & Check if it's equal
+        // to Server state
+
+
+        // DO ::
+    //// firstPlayerAction.
+    //// if (firstPlayerAction)
 }

@@ -1,4 +1,4 @@
-import { IPlayerState } from "../gameEngine";
+import * as PACKET from './constants/binaryConverter';
 
 // Add event listeners globally
 let right: Binary = 0;
@@ -56,7 +56,7 @@ export function setupHandles() {
 
 
 
-export interface IPlayerClient {
+export interface IPlayerAction {
     room: string;
     playerid: number;
     left: Binary;
@@ -66,7 +66,7 @@ export interface IPlayerClient {
     actionNum: number;
 }
 
-export const playerclient: IPlayerClient = {
+export const playerAction: IPlayerAction = {
     room: "",
     playerid: 0,
     left: 0,
@@ -75,15 +75,11 @@ export const playerclient: IPlayerClient = {
     down: 0,
     actionNum: 0
 }
-interface Action {
-    playerclient: IPlayerClient;
-    actionNum: number;
-}
 
 class Node {
-    public val: Action;
+    public val: IPlayerAction;
     public next: null | Node;
-    constructor(val: Action, next = null) {
+    constructor(val: IPlayerAction, next = null) {
         this.val = val;
         this.next = next;
     }
@@ -99,7 +95,7 @@ class ClientSideQueue {
         this.length = 0;
     }
 
-    enqueue(val: Action) {
+    enqueue(val: IPlayerAction) {
         if (this.head === null || this.tail === null) {
             this.head = new Node(val);
             this.tail = this.head;
@@ -112,7 +108,7 @@ class ClientSideQueue {
             length++;
 
         }
-        return this.head;
+        return this.head.val;
     }
 
     dequeue() {
@@ -126,7 +122,7 @@ class ClientSideQueue {
             // decrease length
             length--;
 
-            return temp;
+            return temp.val;
 
 
         }
@@ -139,16 +135,13 @@ class ClientSideQueue {
 }
 
 // starting point - Global object
-let actionNum = 1;
-const queue = new ClientSideQueue();
+let actionNum = 0;
+export const queue = new ClientSideQueue();
 
 export default function updateServer(tFrame: DOMHighResTimeStamp, ws1: WebSocket, playerid: number, room: string) {
 
-    function clientSideOwnPlayerPrediction(playerclient: IPlayerClient, queue: ClientSideQueue) {
-        // I have to enumerate each action (left / right / up / down) and remember it in the client side  
-        const action = { playerclient, actionNum };
-        queue.enqueue(action);
-        actionNum++;
+    function clientSideOwnPlayerPrediction(playerAction: IPlayerAction, queue: ClientSideQueue) {
+        // I have to enumerate each action (left / right / up / down) and remember it in the client side  & store in queue
 
         // I send the "done" action with that enumeration to the server
 
@@ -169,39 +162,42 @@ export default function updateServer(tFrame: DOMHighResTimeStamp, ws1: WebSocket
         //That's it- then test the cheating side - where i can change the state (like hacker do) or network issue
     }
 
-    playerclient.room = room;
-    playerclient.playerid = playerid;
-    playerclient.left = left;
-    playerclient.right = right;
-    playerclient.up = up;
-    playerclient.down = down;
-    const buffer = binaryDirectionConverter(playerclient);
+    playerAction.room = room;
+    playerAction.playerid = playerid;
+    playerAction.left = left;
+    playerAction.right = right;
+    playerAction.up = up;
+    playerAction.down = down;
+
+    playerAction.actionNum++;
+    queue.enqueue({ ...playerAction });
+
+    const buffer = binaryDirectionConverter(playerAction);
     ws1!.send(buffer);
 }
 
 type Binary = 0 | 1;
 
 
-function binaryDirectionConverter(playerclient: IPlayerClient) {
+function binaryDirectionConverter(playerAction: IPlayerAction) {
     // each key press is send to the server continuously  -> left, right, up, down
-    const BYTESNUM = 8;
+    // room: 6, playerid: 4, directionPacked: 2, actionNum: 4 (4 billion = 2 years with 60fps)
     const directionPacked =
-        playerclient.left << 3 |
-        playerclient.right << 2 |
-        playerclient.up << 1 |
-        playerclient.down << 0;
-    const arrayBuffer = new ArrayBuffer(BYTESNUM);
-    const uint8bufferView = new Uint8Array(arrayBuffer);
+        playerAction.left << 3 |
+        playerAction.right << 2 |
+        playerAction.up << 1 |
+        playerAction.down << 0;
+    const arrayBuffer = new ArrayBuffer(PACKET.CLIENT_BYTES_NUM);
+    const view = new DataView(arrayBuffer);
+    const uint8StringView = new Uint8Array(arrayBuffer);
     const encoder = new TextEncoder();
-    const uint8StringView = encoder.encode(playerclient.room);
-
-    uint8bufferView.set(uint8StringView, 0);
-    uint8bufferView[6] = playerclient.playerid;
-    uint8bufferView[7] = directionPacked;
-
-    const lalaUint8View = new Uint8Array(arrayBuffer, 6, 1);
+    const uint8String = encoder.encode(playerAction.room);
 
 
+    uint8StringView.set(uint8String);
+    view.setUint32(PACKET.ROOM_BYTE, playerAction.playerid);
+    view.setUint16(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE, directionPacked);
+    view.setUint32(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + PACKET.DIRECTIONPACKED_BYTE, playerAction.actionNum);
 
     return arrayBuffer;
 }

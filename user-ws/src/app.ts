@@ -4,6 +4,13 @@ import express from 'express';
 import { createClient } from "redis";
 import { chatRoomOnMessage, chatRoomOnClose } from './controllers/chatRoom.controller.js';
 
+const SERVER_BYTES_NUM = 18;
+const ROOM_BYTE = 6;
+const PLAYERID_BYTE = 4;
+const DIRECTIONPACKED_BYTE = 2;
+
+const POSITION_BYTE = 2;
+const ACTIONNUM_BYTE = 4;
 
 export type ClientType = ReturnType<typeof createClient>;
 // use Map with Set as the value - the next time 
@@ -13,13 +20,14 @@ export interface Room {
 
 type Binary = 0 | 1;
 
-interface IPlayerClient {
+interface IPlayerAction {
     room: string;
     playerid: number;
     left: Binary;
     right: Binary;
     up: Binary;
     down: Binary;
+    actionNum: number;
 }
 
 export interface IPlayerState {
@@ -27,6 +35,7 @@ export interface IPlayerState {
     playerid: number;
     x: number;
     y: number;
+    actionNum: number;
 }
 const INIT_X = 10;
 const INIT_Y = 10;
@@ -51,17 +60,18 @@ export default async function createServer(port: number) {
     // (ws is attached -> the Room & Playerid)
     const players = new Map<IPlayerState["playerid"], IPlayerState>();
 
-    const playerclient: IPlayerClient = {
+    const playerAction: IPlayerAction = {
         room: "",
         playerid: 0,
         left: 0,
         right: 0,
         up: 0,
-        down: 0
+        down: 0,
+        actionNum: 0,
     }
 
     function subscriptionHandler(message: Buffer, channel: Buffer) {
-        //NOTE:::::::// CHANGE THIS TO REFLECT game displacement, then send to all the clients
+        //NOTE:::::: REFLECTs game displacement, then send to all the clients
         //
 
         //
@@ -105,29 +115,30 @@ export default async function createServer(port: number) {
                 // Game engine 
 
                 // Decode directions data
-                binaryDecoder(data, playerclient); // decode with config set as little endian as bytes are 
+                binaryDecoder(data, playerAction); // decode with config set as little endian as bytes are 
 
                 if ((ws as any).playerid === undefined) {
-                    (ws as any).playerid = playerclient.playerid;
+                    (ws as any).playerid = playerAction.playerid;
                 }
 
 
 
                 // Set server longliving PlayerState data (Inside the Map)
-                let playerState: IPlayerState | undefined = players.get(playerclient.playerid);
+                let playerState: IPlayerState | undefined = players.get(playerAction.playerid);
                 if (!playerState) {
                     playerState = {
-                        room: playerclient.room,
-                        playerid: playerclient.playerid,
+                        room: playerAction.room,
+                        playerid: playerAction.playerid,
                         x: INIT_X,
                         y: INIT_Y,
+                        actionNum: playerAction.actionNum,
                     }
                     // set Server data for the playerState
-                    players.set(playerclient.playerid, playerState);
+                    players.set(playerAction.playerid, playerState);
                 }
 
 
-                const displacement = updater(playerclient, playerState);
+                const displacement = updater(playerAction, playerState);
                 console.log("Displacement", displacement);
 
 
@@ -167,64 +178,71 @@ export default async function createServer(port: number) {
         });
     })
 
-    function binaryDecoder(data: ArrayBuffer, playerclient: IPlayerClient) {
+    function binaryDecoder(data: ArrayBuffer, playerAction: IPlayerAction) {
         //((I use Dataview instead of TypedArrays to get a view of ArrayBuffer bcs I need to
         // store different datatypes inside the ArrayBuffer))
-        const ROOM_BYTES = 6;
-        const uint8StringView = new Uint8Array(data, 0, ROOM_BYTES);
-        const decoder = new TextDecoder();
-        playerclient.room = decoder.decode(uint8StringView);
+        const view = new DataView(data);
 
-        const uint8ArrayView = new Uint8Array(data, ROOM_BYTES);
+        const uint8StringView = new Uint8Array(data, 0, ROOM_BYTE);
+        const decoder = new TextDecoder();
+        playerAction.room = decoder.decode(uint8StringView);
+
+        const uint8ArrayView = new Uint8Array(data, ROOM_BYTE);
 
         if (uint8ArrayView[0] === undefined || uint8ArrayView[1] === undefined) {
             throw new Error("playerid is undefined or directions undefined");
         }
 
-        playerclient.playerid = uint8ArrayView[0];
-        console.log("PLAYer ID iS HEREEE", playerclient.playerid);
-        const directionPacked = uint8ArrayView[1];
+        playerAction.playerid = view.getUint32(ROOM_BYTE, true);
+        console.log("PLAYer ID iS HEREEE", playerAction.playerid);
+        const directionPacked = view.getUint16(ROOM_BYTE + PLAYERID_BYTE, true);
 
-        playerclient.left = (directionPacked >> 3 & 1) as Binary;
-        console.log(playerclient.left);
-        playerclient.right = (directionPacked >> 2 & 1) as Binary;
-        playerclient.up = (directionPacked >> 1 & 1) as Binary;
-        playerclient.down = (directionPacked >> 0 & 1) as Binary;
-        console.log(playerclient);
+        playerAction.left = (directionPacked >> 3 & 1) as Binary;
+        playerAction.right = (directionPacked >> 2 & 1) as Binary;
+        playerAction.up = (directionPacked >> 1 & 1) as Binary;
+        playerAction.down = (directionPacked >> 0 & 1) as Binary;
+
+        playerAction.actionNum = view.getUint32(ROOM_BYTE + PLAYERID_BYTE + DIRECTIONPACKED_BYTE, true);
+        console.log(playerAction);
     }
-    function updater(playerclient: IPlayerClient, playerState: IPlayerState) {
+    function updater(playerAction: IPlayerAction, playerState: IPlayerState) {
         // update x, y , vx, vy
         //NOTE:: // CONSTANTS NEED TO UPDATE LATER
         const vx = 10;
         const vy = 10;
         const dt = 0.1
-        if (playerclient.left) {
-            playerState.x = playerState.x - playerclient.left * vx * dt;
+
+        // modify playerState's actionNum in each frame
+        playerState.actionNum = playerAction.actionNum;
+        
+        if (playerAction.left) {
+            playerState.x = playerState.x - playerAction.left * vx * dt;
         }
-        if (playerclient.right) {
-            playerState.x = playerState.x + playerclient.right * vx * dt;
+        if (playerAction.right) {
+            playerState.x = playerState.x + playerAction.right * vx * dt;
         }
 
-        if (playerclient.up) {
-            playerState.y = playerState.y - playerclient.up * vy * dt;
+        if (playerAction.up) {
+            playerState.y = playerState.y - playerAction.up * vy * dt;
         }
-        if (playerclient.down) {
-            playerState.y = playerState.y + playerclient.down * vy * dt;
+        if (playerAction.down) {
+            playerState.y = playerState.y + playerAction.down * vy * dt;
         }
 
         // convert x, y to binary then publish to other servers (ie; redis clients)
-        const arrayBuffer = new ArrayBuffer(12);
+        const arrayBuffer = new ArrayBuffer(SERVER_BYTES_NUM);
+        const view = new DataView(arrayBuffer);
         const uint8ArrayView = new Uint8Array(arrayBuffer);
-        const int16ArrayView = new Int16Array(arrayBuffer, 8);
 
-        // one byte gap here
         const encoder = new TextEncoder();
         const uint8StringView = encoder.encode(playerState.room);
         uint8ArrayView.set(uint8StringView, 0);
-        uint8ArrayView[6] = playerState.playerid;
-        // automatically truncates the fractional part as it's int and not float
-        int16ArrayView[0] = playerState.x;
-        int16ArrayView[1] = playerState.y;
+
+        view.setUint32(ROOM_BYTE, playerState.playerid);
+        view.setInt16(ROOM_BYTE + PLAYERID_BYTE, playerState.x);
+        view.setInt16(ROOM_BYTE + PLAYERID_BYTE + POSITION_BYTE, playerState.y);
+
+        view.setUint32(ROOM_BYTE + PLAYERID_BYTE + 2*POSITION_BYTE + ACTIONNUM_BYTE, playerState.actionNum);
         return arrayBuffer;
     }
 
