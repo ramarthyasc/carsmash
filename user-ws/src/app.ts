@@ -3,6 +3,7 @@ import http, { Server } from 'http';
 import express from 'express';
 import { createClient } from "redis";
 import { chatRoomOnMessage, chatRoomOnClose } from './controllers/chatRoom.controller.js';
+import * as DYNAMICS from './constants/dynamics.js';
 
 const SERVER_BYTES_NUM = 18;
 const ROOM_BYTE = 6;
@@ -193,44 +194,41 @@ export default async function createServer(port: number) {
             throw new Error("playerid is undefined or directions undefined");
         }
 
-        playerAction.playerid = view.getUint32(ROOM_BYTE, true);
+        playerAction.playerid = view.getUint32(ROOM_BYTE);
         console.log("PLAYer ID iS HEREEE", playerAction.playerid);
-        const directionPacked = view.getUint16(ROOM_BYTE + PLAYERID_BYTE, true);
+        const directionPacked = view.getUint16(ROOM_BYTE + PLAYERID_BYTE);
 
         playerAction.left = (directionPacked >> 3 & 1) as Binary;
         playerAction.right = (directionPacked >> 2 & 1) as Binary;
         playerAction.up = (directionPacked >> 1 & 1) as Binary;
         playerAction.down = (directionPacked >> 0 & 1) as Binary;
 
-        playerAction.actionNum = view.getUint32(ROOM_BYTE + PLAYERID_BYTE + DIRECTIONPACKED_BYTE, true);
+        playerAction.actionNum = view.getUint32(ROOM_BYTE + PLAYERID_BYTE + DIRECTIONPACKED_BYTE);
         console.log(playerAction);
     }
     function updater(playerAction: IPlayerAction, playerState: IPlayerState) {
         // update x, y , vx, vy
-        //NOTE:: // CONSTANTS NEED TO UPDATE LATER
-        const vx = 10;
-        const vy = 10;
-        const dt = 0.1
 
         // modify playerState's actionNum in each frame
         playerState.actionNum = playerAction.actionNum;
         
         if (playerAction.left) {
-            playerState.x = playerState.x - playerAction.left * vx * dt;
+            playerState.x -= DYNAMICS.VX * DYNAMICS.DT;
         }
         if (playerAction.right) {
-            playerState.x = playerState.x + playerAction.right * vx * dt;
+            playerState.x += DYNAMICS.VX * DYNAMICS.DT;
         }
 
         if (playerAction.up) {
-            playerState.y = playerState.y - playerAction.up * vy * dt;
+            playerState.y -= DYNAMICS.VY * DYNAMICS.DT;
         }
         if (playerAction.down) {
-            playerState.y = playerState.y + playerAction.down * vy * dt;
+            playerState.y += DYNAMICS.VY * DYNAMICS.DT;
         }
 
         // convert x, y to binary then publish to other servers (ie; redis clients)
         const arrayBuffer = new ArrayBuffer(SERVER_BYTES_NUM);
+        console.log("Server bytes num", SERVER_BYTES_NUM);
         const view = new DataView(arrayBuffer);
         const uint8ArrayView = new Uint8Array(arrayBuffer);
 
@@ -242,7 +240,7 @@ export default async function createServer(port: number) {
         view.setInt16(ROOM_BYTE + PLAYERID_BYTE, playerState.x);
         view.setInt16(ROOM_BYTE + PLAYERID_BYTE + POSITION_BYTE, playerState.y);
 
-        view.setUint32(ROOM_BYTE + PLAYERID_BYTE + 2*POSITION_BYTE + ACTIONNUM_BYTE, playerState.actionNum);
+        view.setUint32(ROOM_BYTE + PLAYERID_BYTE + 2*POSITION_BYTE, playerState.actionNum);
         return arrayBuffer;
     }
 

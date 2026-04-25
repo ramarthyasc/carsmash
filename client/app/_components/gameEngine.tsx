@@ -61,7 +61,6 @@ export default function GameEngine() {
 
 
         // simulate results/game data being send from server to client - where the client just renders it
-        // (DUMB CLIENT - DOESN'T Do ANY Calculations)
         if (dataRef.current) {
             //mutates the specific player
             // if (!renderPlayer) {}
@@ -85,12 +84,13 @@ function binaryDecoderAndPlayersUpdater(data: ArrayBuffer, players: Map<IPlayerS
     const room = (new TextDecoder).decode(uint8ArrayRoomView);
 
     const view = new DataView(data);
-    const playerid = view.getUint32(PACKET.ROOM_BYTE, true);
+    const playerid = view.getUint32(PACKET.ROOM_BYTE);
 
-    const x = view.getInt16(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE, true);
-    const y = view.getInt16(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + PACKET.POSITION_BYTE, true);
+    const x = view.getInt16(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE);
+    const y = view.getInt16(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + PACKET.POSITION_BYTE);
 
-    const actionNum = view.getUint32(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + 2*PACKET.POSITION_BYTE, true);
+    const actionNum = view.getUint32(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + 2 * PACKET.POSITION_BYTE);
+    console.log("Playerstate actionNUM: ", actionNum);
 
     // mutating the Mapped player object and returning only that object
     let renderPlayer = players.get(playerid);
