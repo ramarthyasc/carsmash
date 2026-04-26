@@ -76,7 +76,7 @@ function updater(playerAction: IPlayerAction, predictedPlayerState: IPlayerState
     if (playerAction.down) {
         predictedPlayerState.y += DYNAMICS.VY * DYNAMICS.DT;
     }
-    console.log("CLIENT SIDE x, y", predictedPlayerState.x, predictedPlayerState.y);
+    // console.log("CLIENT SIDE x, y", predictedPlayerState.x, predictedPlayerState.y);
 
 
 }
@@ -96,7 +96,9 @@ function predictionVerifierAndModifier(players: Map<IPlayerState["playerid"], IP
     // serverAction may stay the same for many cycles. So we need the client actionNum which was popped out in the 
     // previous cycle
     const serverActionNum = thisPlayerState.actionNum;
-    if (prevClientActionNum ? (prevClientActionNum === serverActionNum): false) { return;};
+    if (prevClientActionNum ? (prevClientActionNum === serverActionNum): false) { 
+        console.log("PrevClientActionNum and ServerActionNum is same");
+        return;};
 
     let clientActionNum = clientSideQueue.dequeue()!.actionNum;
 
@@ -134,8 +136,8 @@ function predictionVerifierAndModifier(players: Map<IPlayerState["playerid"], IP
         }
     }
 
-    console.log("PlayerX, xChange, serveraction, actiondeletedfromfront", thisPlayerState.x, xStateChange,
-        serverActionNum, clientActionNum);
+    // console.log("PlayerX, xChange, serveraction, actiondeletedfromfront", thisPlayerState.x, xStateChange,
+        // serverActionNum, clientActionNum);
     const calculatedStateX = thisPlayerState.x + xStateChange;
     const calculatedStateY = thisPlayerState.y + yStateChange;
 

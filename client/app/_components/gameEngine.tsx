@@ -90,7 +90,7 @@ function binaryDecoderAndPlayersUpdater(data: ArrayBuffer, players: Map<IPlayerS
     const y = view.getInt16(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + PACKET.POSITION_BYTE);
 
     const actionNum = view.getUint32(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + 2 * PACKET.POSITION_BYTE);
-    console.log("Playerstate actionNUM: ", actionNum);
+    // console.log("Playerstate actionNUM: ", actionNum);
 
     // mutating the Mapped player object and returning only that object
     let renderPlayer = players.get(playerid);
