@@ -64,7 +64,21 @@ function updater(playerAction: IPlayerAction, predictedPlayerState: IPlayerState
     predictedPlayerState.room = playerAction.room;
     predictedPlayerState.actionNum = playerAction.actionNum;
 
-    if (playerAction.left) {
+
+    if (playerAction.left && playerAction.up) {
+        predictedPlayerState.x = Math.fround(predictedPlayerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+        predictedPlayerState.y = Math.fround(predictedPlayerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+    } else if (playerAction.left && playerAction.down) {
+        predictedPlayerState.x = Math.fround(predictedPlayerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+        predictedPlayerState.y = Math.fround(predictedPlayerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+    } else if (playerAction.right && playerAction.up) {
+        predictedPlayerState.x = Math.fround(predictedPlayerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+        predictedPlayerState.y = Math.fround(predictedPlayerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+    } else if (playerAction.right && playerAction.down) {
+        predictedPlayerState.x = Math.fround(predictedPlayerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+        predictedPlayerState.y = Math.fround(predictedPlayerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+
+    } else if (playerAction.left) {
         predictedPlayerState.x = Math.fround(predictedPlayerState.x - DYNAMICS.VX * DYNAMICS.DT);
     } else if (playerAction.right) {
         predictedPlayerState.x = Math.fround(predictedPlayerState.x + DYNAMICS.VX * DYNAMICS.DT);
@@ -72,23 +86,6 @@ function updater(playerAction: IPlayerAction, predictedPlayerState: IPlayerState
         predictedPlayerState.y = Math.fround(predictedPlayerState.y - DYNAMICS.VY * DYNAMICS.DT);
     } else if (playerAction.down) {
         predictedPlayerState.y = Math.fround(predictedPlayerState.y + DYNAMICS.VY * DYNAMICS.DT);
-    }
-
-    if (playerAction.left && playerAction.up) {
-        predictedPlayerState.x = Math.fround(predictedPlayerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-        predictedPlayerState.y = Math.fround(predictedPlayerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
-    }
-    if (playerAction.left && playerAction.down) {
-        predictedPlayerState.x = Math.fround(predictedPlayerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-        predictedPlayerState.y = Math.fround(predictedPlayerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
-    }
-    if (playerAction.right && playerAction.up) {
-        predictedPlayerState.x = Math.fround(predictedPlayerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-        predictedPlayerState.y = Math.fround(predictedPlayerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
-    }
-    if (playerAction.right && playerAction.down) {
-        predictedPlayerState.x = Math.fround(predictedPlayerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-        predictedPlayerState.y = Math.fround(predictedPlayerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
     }
     console.log("Predicted X", predictedPlayerState.x, "Predicted Y", predictedPlayerState.y);
 
@@ -137,7 +134,20 @@ function predictionVerifierAndModifier(players: Map<IPlayerState["playerid"], IP
     let yStateChange = 0;
     for (const action of actionsArray) {
 
-        if (action.left) {
+        if (action.left && action.up) {
+            xStateChange = Math.fround(xStateChange - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            yStateChange = Math.fround(yStateChange - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+        } else if (action.left && action.down) {
+            xStateChange = Math.fround(xStateChange - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            yStateChange = Math.fround(yStateChange + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+        } else if (action.right && action.up) {
+            xStateChange = Math.fround(xStateChange + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            yStateChange = Math.fround(yStateChange - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+        } else if (action.right && action.down) {
+            xStateChange = Math.fround(xStateChange + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            yStateChange = Math.fround(yStateChange + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+            
+        } else if (action.left) {
             xStateChange = Math.fround(xStateChange - DYNAMICS.VX * DYNAMICS.DT);
         } else if (action.right) {
             xStateChange = Math.fround(xStateChange + DYNAMICS.VX * DYNAMICS.DT);
@@ -145,24 +155,6 @@ function predictionVerifierAndModifier(players: Map<IPlayerState["playerid"], IP
             yStateChange = Math.fround(yStateChange - DYNAMICS.VY * DYNAMICS.DT);
         } else if (action.down) {
             yStateChange = Math.fround(yStateChange + DYNAMICS.VY * DYNAMICS.DT);
-        }
-
-
-        if (action.left && action.up) {
-            xStateChange = Math.fround(xStateChange - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-            yStateChange = Math.fround(yStateChange - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
-        }
-        if (action.left && action.down) {
-            xStateChange = Math.fround(xStateChange - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-            yStateChange = Math.fround(yStateChange + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
-        }
-        if (action.right && action.up) {
-            xStateChange = Math.fround(xStateChange + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-            yStateChange = Math.fround(yStateChange - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
-        }
-        if (action.right && action.down) {
-            xStateChange = Math.fround(xStateChange + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-            yStateChange = Math.fround(yStateChange + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
         }
     }
 

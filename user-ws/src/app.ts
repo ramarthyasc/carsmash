@@ -211,7 +211,21 @@ export default async function createServer(port: number) {
         // modify playerState's actionNum in each frame
         playerState.actionNum = playerAction.actionNum;
 
-        if (playerAction.left) {
+
+        if (playerAction.left && playerAction.up) {
+            playerState.x = Math.fround(playerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            playerState.y = Math.fround(playerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+        } else if (playerAction.left && playerAction.down) {
+            playerState.x = Math.fround(playerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            playerState.y = Math.fround(playerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+        } else if (playerAction.right && playerAction.up) {
+            playerState.x = Math.fround(playerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            playerState.y = Math.fround(playerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+        } else if (playerAction.right && playerAction.down) {
+            playerState.x = Math.fround(playerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            playerState.y = Math.fround(playerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+
+        } else if (playerAction.left) {
             playerState.x = Math.fround(playerState.x - DYNAMICS.VX * DYNAMICS.DT);
         } else if (playerAction.right) {
             playerState.x = Math.fround(playerState.x + DYNAMICS.VX * DYNAMICS.DT);
@@ -219,23 +233,6 @@ export default async function createServer(port: number) {
             playerState.y = Math.fround(playerState.y - DYNAMICS.VY * DYNAMICS.DT);
         } else if (playerAction.down) {
             playerState.y = Math.fround(playerState.y + DYNAMICS.VY * DYNAMICS.DT);
-        }
-
-        if (playerAction.left && playerAction.up) {
-            playerState.x = Math.fround(playerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-            playerState.y = Math.fround(playerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
-        }
-        if (playerAction.left && playerAction.down) {
-            playerState.x = Math.fround(playerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-            playerState.y = Math.fround(playerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
-        }
-        if (playerAction.right && playerAction.up) {
-            playerState.x = Math.fround(playerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-            playerState.y = Math.fround(playerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
-        }
-        if (playerAction.right && playerAction.down) {
-            playerState.x = Math.fround(playerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
-            playerState.y = Math.fround(playerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
         }
 
         console.log("PlayerState inside server X", playerState.x, "Y", playerState.y);
