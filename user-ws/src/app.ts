@@ -5,12 +5,12 @@ import { createClient } from "redis";
 import { chatRoomOnMessage, chatRoomOnClose } from './controllers/chatRoom.controller.js';
 import * as DYNAMICS from './constants/dynamics.js';
 
-const SERVER_BYTES_NUM = 18;
+const SERVER_BYTES_NUM = 22;
 const ROOM_BYTE = 6;
 const PLAYERID_BYTE = 4;
 const DIRECTIONPACKED_BYTE = 2;
 
-const POSITION_BYTE = 2;
+const POSITION_BYTE = 4;
 const ACTIONNUM_BYTE = 4;
 
 export type ClientType = ReturnType<typeof createClient>;
@@ -97,7 +97,6 @@ export default async function createServer(port: number) {
             const room = channel.toString();
             console.log(rooms);
             rooms[room]?.sockets.forEach((socket) => socket.send(message.toString()));
-
         }
 
     }
@@ -211,20 +210,35 @@ export default async function createServer(port: number) {
 
         // modify playerState's actionNum in each frame
         playerState.actionNum = playerAction.actionNum;
-        
+
         if (playerAction.left) {
-            playerState.x -= DYNAMICS.VX * DYNAMICS.DT;
-        }
-        if (playerAction.right) {
-            playerState.x += DYNAMICS.VX * DYNAMICS.DT;
+            playerState.x = Math.fround(playerState.x - DYNAMICS.VX * DYNAMICS.DT);
+        } else if (playerAction.right) {
+            playerState.x = Math.fround(playerState.x + DYNAMICS.VX * DYNAMICS.DT);
+        } else if (playerAction.up) {
+            playerState.y = Math.fround(playerState.y - DYNAMICS.VY * DYNAMICS.DT);
+        } else if (playerAction.down) {
+            playerState.y = Math.fround(playerState.y + DYNAMICS.VY * DYNAMICS.DT);
         }
 
-        if (playerAction.up) {
-            playerState.y -= DYNAMICS.VY * DYNAMICS.DT;
+        if (playerAction.left && playerAction.up) {
+            playerState.x = Math.fround(playerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            playerState.y = Math.fround(playerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
         }
-        if (playerAction.down) {
-            playerState.y += DYNAMICS.VY * DYNAMICS.DT;
+        if (playerAction.left && playerAction.down) {
+            playerState.x = Math.fround(playerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            playerState.y = Math.fround(playerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
         }
+        if (playerAction.right && playerAction.up) {
+            playerState.x = Math.fround(playerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            playerState.y = Math.fround(playerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+        }
+        if (playerAction.right && playerAction.down) {
+            playerState.x = Math.fround(playerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            playerState.y = Math.fround(playerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+        }
+
+        console.log("PlayerState inside server X", playerState.x, "Y", playerState.y);
 
         // convert x, y to binary then publish to other servers (ie; redis clients)
         const arrayBuffer = new ArrayBuffer(SERVER_BYTES_NUM);
@@ -237,10 +251,10 @@ export default async function createServer(port: number) {
         uint8ArrayView.set(uint8StringView, 0);
 
         view.setUint32(ROOM_BYTE, playerState.playerid);
-        view.setInt16(ROOM_BYTE + PLAYERID_BYTE, playerState.x);
-        view.setInt16(ROOM_BYTE + PLAYERID_BYTE + POSITION_BYTE, playerState.y);
+        view.setFloat32(ROOM_BYTE + PLAYERID_BYTE, playerState.x);
+        view.setFloat32(ROOM_BYTE + PLAYERID_BYTE + POSITION_BYTE, playerState.y);
 
-        view.setUint32(ROOM_BYTE + PLAYERID_BYTE + 2*POSITION_BYTE, playerState.actionNum);
+        view.setUint32(ROOM_BYTE + PLAYERID_BYTE + 2 * POSITION_BYTE, playerState.actionNum);
         return arrayBuffer;
     }
 

@@ -5,6 +5,7 @@ import * as DYNAMICS from "./constants/dynamics";
 //dummy init value for all players
 const INIT_X = 10;
 const INIT_Y = 10;
+const QSCALE = 1000; // Quantization scale
 
 const predictedPlayerState: IPlayerState = {
     room: "",
@@ -64,20 +65,32 @@ function updater(playerAction: IPlayerAction, predictedPlayerState: IPlayerState
     predictedPlayerState.actionNum = playerAction.actionNum;
 
     if (playerAction.left) {
-        predictedPlayerState.x -= DYNAMICS.VX * DYNAMICS.DT;
-    }
-    if (playerAction.right) {
-        predictedPlayerState.x += DYNAMICS.VX * DYNAMICS.DT;
+        predictedPlayerState.x = Math.fround(predictedPlayerState.x - DYNAMICS.VX * DYNAMICS.DT);
+    } else if (playerAction.right) {
+        predictedPlayerState.x = Math.fround(predictedPlayerState.x + DYNAMICS.VX * DYNAMICS.DT);
+    } else if (playerAction.up) {
+        predictedPlayerState.y = Math.fround(predictedPlayerState.y - DYNAMICS.VY * DYNAMICS.DT);
+    } else if (playerAction.down) {
+        predictedPlayerState.y = Math.fround(predictedPlayerState.y + DYNAMICS.VY * DYNAMICS.DT);
     }
 
-    if (playerAction.up) {
-        predictedPlayerState.y -= DYNAMICS.VY * DYNAMICS.DT;
+    if (playerAction.left && playerAction.up) {
+        predictedPlayerState.x = Math.fround(predictedPlayerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+        predictedPlayerState.y = Math.fround(predictedPlayerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
     }
-    if (playerAction.down) {
-        predictedPlayerState.y += DYNAMICS.VY * DYNAMICS.DT;
+    if (playerAction.left && playerAction.down) {
+        predictedPlayerState.x = Math.fround(predictedPlayerState.x - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+        predictedPlayerState.y = Math.fround(predictedPlayerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
     }
-    // console.log("CLIENT SIDE x, y", predictedPlayerState.x, predictedPlayerState.y);
-
+    if (playerAction.right && playerAction.up) {
+        predictedPlayerState.x = Math.fround(predictedPlayerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+        predictedPlayerState.y = Math.fround(predictedPlayerState.y - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+    }
+    if (playerAction.right && playerAction.down) {
+        predictedPlayerState.x = Math.fround(predictedPlayerState.x + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+        predictedPlayerState.y = Math.fround(predictedPlayerState.y + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+    }
+    console.log("Predicted X", predictedPlayerState.x, "Predicted Y", predictedPlayerState.y);
 
 }
 
@@ -96,9 +109,10 @@ function predictionVerifierAndModifier(players: Map<IPlayerState["playerid"], IP
     // serverAction may stay the same for many cycles. So we need the client actionNum which was popped out in the 
     // previous cycle
     const serverActionNum = thisPlayerState.actionNum;
-    if (prevClientActionNum ? (prevClientActionNum === serverActionNum): false) { 
+    if (prevClientActionNum ? (prevClientActionNum === serverActionNum) : false) {
         console.log("PrevClientActionNum and ServerActionNum is same");
-        return;};
+        return;
+    };
 
     let clientActionNum = clientSideQueue.dequeue()!.actionNum;
 
@@ -122,33 +136,61 @@ function predictionVerifierAndModifier(players: Map<IPlayerState["playerid"], IP
     let xStateChange = 0;
     let yStateChange = 0;
     for (const action of actionsArray) {
+
         if (action.left) {
-            xStateChange -= DYNAMICS.VX * DYNAMICS.DT;
+            xStateChange = Math.fround(xStateChange - DYNAMICS.VX * DYNAMICS.DT);
+        } else if (action.right) {
+            xStateChange = Math.fround(xStateChange + DYNAMICS.VX * DYNAMICS.DT);
+        } else if (action.up) {
+            yStateChange = Math.fround(yStateChange - DYNAMICS.VY * DYNAMICS.DT);
+        } else if (action.down) {
+            yStateChange = Math.fround(yStateChange + DYNAMICS.VY * DYNAMICS.DT);
         }
-        if (action.right) {
-            xStateChange += DYNAMICS.VX * DYNAMICS.DT;
+
+
+        if (action.left && action.up) {
+            xStateChange = Math.fround(xStateChange - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            yStateChange = Math.fround(yStateChange - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
         }
-        if (action.down) {
-            yStateChange += DYNAMICS.VY * DYNAMICS.DT;
+        if (action.left && action.down) {
+            xStateChange = Math.fround(xStateChange - DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            yStateChange = Math.fround(yStateChange + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
         }
-        if (action.up) {
-            yStateChange -= DYNAMICS.VY * DYNAMICS.DT;
+        if (action.right && action.up) {
+            xStateChange = Math.fround(xStateChange + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            yStateChange = Math.fround(yStateChange - DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
+        }
+        if (action.right && action.down) {
+            xStateChange = Math.fround(xStateChange + DYNAMICS.VX * DYNAMICS.DT / Math.sqrt(2));
+            yStateChange = Math.fround(yStateChange + DYNAMICS.VY * DYNAMICS.DT / Math.sqrt(2));
         }
     }
 
-    // console.log("PlayerX, xChange, serveraction, actiondeletedfromfront", thisPlayerState.x, xStateChange,
-        // serverActionNum, clientActionNum);
-    const calculatedStateX = thisPlayerState.x + xStateChange;
-    const calculatedStateY = thisPlayerState.y + yStateChange;
+    // console.log("PlayerX, xChange, PlayerY, yChange, serveraction, actiondeletedfromfront", thisPlayerState.x, xStateChange,
+    //     thisPlayerState.y, yStateChange, serverActionNum, clientActionNum);
 
-    if (calculatedStateX === predictedPlayerState.x && calculatedStateY === predictedPlayerState.y) {
+    const calculatedStateX = Math.fround(thisPlayerState.x + xStateChange);
+    const calculatedStateY = Math.fround(thisPlayerState.y + yStateChange);
+
+    //NOTE: // Incremental accumulation vs recomputation -> causes float64 (js number) to be rounded differently
+    // for each calculation. causing slight end decimal number mismatches.
+    //So Do QUANTIZED RECONCILIATION instead of exact matching for Fast paced shooters. Fast paced shooters don't need perfect
+    //Mathematical determinism
+
+    const equalX = Math.round(calculatedStateX * QSCALE) === Math.round(predictedPlayerState.x * QSCALE);
+    const equalY = Math.round(calculatedStateY * QSCALE) === Math.round(predictedPlayerState.y * QSCALE);
+    if (equalX && equalY) {
         // good
         return;
     } else {
-        console.log("PREDICTED STATE X, CALCULATED X", predictedPlayerState.x, calculatedStateX);
-        console.log("PREDICTED STATE Y, CALCULATED Y", predictedPlayerState.y, calculatedStateY);
+        console.log("Quantum : PREDICTED STATE X, CALCULATED X", Math.round(predictedPlayerState.x * QSCALE),
+            Math.round(calculatedStateX * QSCALE));
+        console.log("Quantum : PREDICTED STATE Y, CALCULATED Y", Math.round(predictedPlayerState.y * QSCALE), 
+                    Math.round(calculatedStateY * QSCALE));
         console.log("BADDDDDDDDDDD");
-        //bad - Revert the current predictedPlayerState to the CalculatedState
+        //NOTE:  Revert the current predictedPlayerState to the CalculatedState - NOT bad, this will happen
+        //when the error in the prediction state adds up and crosses the quanta threshold of 10^-3
+        //THE ONLY THING WE NEED TO DO IS TO REDUCE THE NUMBER OF THESE RESETS
         predictedPlayerState.x = calculatedStateX;
         predictedPlayerState.y = calculatedStateY;
         return;

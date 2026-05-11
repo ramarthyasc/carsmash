@@ -46,6 +46,7 @@ export default function GameEngine() {
             if (data instanceof ArrayBuffer) {
                 //binaryframe
                 setTimeout(() => { dataRef.current = data; }, 1000);
+                // dataRef.current = data;
             }
         })
         setupHandles();
@@ -79,15 +80,15 @@ export default function GameEngine() {
 }
 function binaryDecoderAndPlayersUpdater(data: ArrayBuffer, players: Map<IPlayerState["playerid"], IPlayerState>) {
 
-
     const uint8ArrayRoomView = new Uint8Array(data, 0, PACKET.ROOM_BYTE);
     const room = (new TextDecoder).decode(uint8ArrayRoomView);
 
     const view = new DataView(data);
     const playerid = view.getUint32(PACKET.ROOM_BYTE);
 
-    const x = view.getInt16(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE);
-    const y = view.getInt16(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + PACKET.POSITION_BYTE);
+    const x = view.getFloat32(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE);
+    const y = view.getFloat32(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + PACKET.POSITION_BYTE);
+    console.log("X from server", x, "Y from server", y);
 
     const actionNum = view.getUint32(PACKET.ROOM_BYTE + PACKET.PLAYERID_BYTE + 2 * PACKET.POSITION_BYTE);
     // console.log("Playerstate actionNUM: ", actionNum);
