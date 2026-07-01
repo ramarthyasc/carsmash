@@ -1,11 +1,11 @@
 02/07/2026 :
 
-#### Note- MMO
+#### Note: MMO
 
 Use the first server which created the room initially as the BOSS SERVER - for that Room. Then calculate the game state from that room, and then send the state to other servers containing the room.
 
 - Calculations reduced
 
 Todo - 
-1. Stick with TCP if continuing with MMO, otherwise - use UDP
+1. Stick with TCP if continuing with MMO, otherwise/if fastpace can't be handled by tcp - use UDP
 
