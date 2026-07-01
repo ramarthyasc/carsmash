@@ -6,3 +6,6 @@ Use the first server which created the room initially as the BOSS SERVER - for t
 
 - Calculations reduced
 
+Todo - 
+1. Stick with TCP if continuing with MMO, otherwise - use UDP
+
